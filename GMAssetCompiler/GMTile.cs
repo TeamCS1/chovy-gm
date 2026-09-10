@@ -88,6 +88,25 @@ namespace GMAssetCompiler
 			private set;
 		}
 
+		// Plain-value constructor for non-GM8.1 loaders (e.g. .gmx projects).
+		public GMTile(int _x, int _y, int _index, int _xo, int _yo, int _w, int _h, int _depth, int _id, double _xScale, double _yScale, int _blend, double _alpha)
+		{
+			X = _x;
+			Y = _y;
+			Index = _index;
+			XO = _xo;
+			YO = _yo;
+			W = _w;
+			H = _h;
+			Depth = _depth;
+			Id = _id;
+			XScale = _xScale;
+			YScale = _yScale;
+			Blend = _blend;
+			Alpha = _alpha;
+			Visible = true;
+		}
+
 		public GMTile(Stream _stream, int _version)
 		{
 			X = _stream.ReadInteger();

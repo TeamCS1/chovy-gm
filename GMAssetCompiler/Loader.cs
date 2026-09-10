@@ -95,6 +95,7 @@ namespace GMAssetCompiler
 				}
 			}
 
+			Dictionary<string, int> backgroundIndex = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
 			XElement backgroundsEl = root.Element("backgrounds");
 			if (backgroundsEl != null)
 			{
@@ -104,6 +105,7 @@ namespace GMAssetCompiler
 					string name = Path.GetFileName(relPath);
 					string backgroundFile = Path.Combine(projectDir, ToNativePath(relPath) + ".background.gmx");
 					GMBackground background = LoadGMS14Background(backgroundFile);
+					backgroundIndex[name] = assets.Backgrounds.Count;
 					assets.Backgrounds.Add(new KeyValuePair<string, GMBackground>(name, background));
 				}
 			}
@@ -209,12 +211,13 @@ namespace GMAssetCompiler
 					string name = Path.GetFileName(relPath);
 					string roomFile = Path.Combine(projectDir, ToNativePath(relPath) + ".room.gmx");
 					XElement roomXml = XDocument.Load(roomFile).Root;
-					GMRoom room = LoadGMS14Room(roomXml, objectIndex);
+					GMRoom room = LoadGMS14Room(roomXml, objectIndex, backgroundIndex);
 					assets.RoomOrder.Add(assets.Rooms.Count);
 					assets.Rooms.Add(new KeyValuePair<string, GMRoom>(name, room));
 				}
 			}
 
+			TagBackgroundTilesets(assets);
 			return assets;
 		}
 
@@ -507,7 +510,7 @@ namespace GMAssetCompiler
 			return new GMAction(id, code);
 		}
 
-		private static GMRoom LoadGMS14Room(XElement _roomXml, Dictionary<string, int> _objectIndex)
+		private static GMRoom LoadGMS14Room(XElement _roomXml, Dictionary<string, int> _objectIndex, Dictionary<string, int> _backgroundIndex)
 		{
 			string caption = XVal(_roomXml, "caption");
 			int width = XInt(_roomXml, "width");
@@ -534,9 +537,9 @@ namespace GMAssetCompiler
 					int bgHSpeed = AttrInt(bgEl, "hspeed");
 					int bgVSpeed = AttrInt(bgEl, "vspeed");
 					bool bgStretch = AttrBool(bgEl, "stretch");
-					// GMBackground resources aren't loaded by this minimal loader
-					// (see WarnIfUnsupportedResources), so the index is always -1.
-					backgrounds.Add(new GMBack(bgVisible, bgForeground, -1, bgX, bgY, bgHTiled, bgVTiled, bgHSpeed, bgVSpeed, bgStretch));
+					string bgName = AttrVal(bgEl, "name");
+					int bgIndex = IsUndefined(bgName) ? -1 : ResolveIndex(_backgroundIndex, bgName);
+					backgrounds.Add(new GMBack(bgVisible, bgForeground, bgIndex, bgX, bgY, bgHTiled, bgVTiled, bgHSpeed, bgVSpeed, bgStretch));
 				}
 			}
 
@@ -587,6 +590,29 @@ namespace GMAssetCompiler
 			}
 
 			List<GMTile> tiles = new List<GMTile>();
+			XElement tilesEl = _roomXml.Element("tiles");
+			if (tilesEl != null)
+			{
+				foreach (XElement tileEl in tilesEl.Elements("tile"))
+				{
+					string bgName = AttrVal(tileEl, "bgName");
+					int bgIndex = IsUndefined(bgName) ? -1 : ResolveIndex(_backgroundIndex, bgName);
+					int x = AttrInt(tileEl, "x");
+					int y = AttrInt(tileEl, "y");
+					int w = AttrInt(tileEl, "w");
+					int h = AttrInt(tileEl, "h");
+					int xo = AttrInt(tileEl, "xo");
+					int yo = AttrInt(tileEl, "yo");
+					int id = AttrInt(tileEl, "id");
+					int depth = AttrInt(tileEl, "depth");
+					double scaleX = AttrDouble(tileEl, "scaleX", 1.0);
+					double scaleY = AttrDouble(tileEl, "scaleY", 1.0);
+					uint colourVal = AttrUInt(tileEl, "colour", uint.MaxValue);
+					int blend = (int)(colourVal & 0xFFFFFF);
+					double alpha = (colourVal >> 24) / 255.0;
+					tiles.Add(new GMTile(x, y, bgIndex, xo, yo, w, h, depth, id, scaleX, scaleY, blend, alpha));
+				}
+			}
 
 			return new GMRoom(caption, width, height, speed, persistent, colour, showColour, code, backgrounds, enableViews, views, instances, tiles);
 		}
