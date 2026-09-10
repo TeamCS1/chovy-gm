@@ -72,7 +72,14 @@
             this.Karoshi = new System.Windows.Forms.RadioButton();
             this.label19 = new System.Windows.Forms.Label();
             this.GreenTechPlus = new System.Windows.Forms.RadioButton();
+            this.label20 = new System.Windows.Forms.Label();
+            this.TargetGM81 = new System.Windows.Forms.RadioButton();
+            this.TargetGMS14 = new System.Windows.Forms.RadioButton();
+            this.panelRunner = new System.Windows.Forms.Panel();
+            this.panelTarget = new System.Windows.Forms.Panel();
             this.groupBox1.SuspendLayout();
+            this.panelRunner.SuspendLayout();
+            this.panelTarget.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.pictureBox1)).BeginInit();
             this.SuspendLayout();
             // 
@@ -135,7 +142,7 @@
             this.groupBox1.Controls.Add(this.label2);
             this.groupBox1.Controls.Add(this.LBumper);
             this.groupBox1.ForeColor = System.Drawing.Color.Cyan;
-            this.groupBox1.Location = new System.Drawing.Point(190, 215);
+            this.groupBox1.Location = new System.Drawing.Point(190, 238);
             this.groupBox1.Name = "groupBox1";
             this.groupBox1.Size = new System.Drawing.Size(356, 252);
             this.groupBox1.TabIndex = 3;
@@ -412,7 +419,7 @@
             // 
             this.BuildISO.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
             this.BuildISO.ForeColor = System.Drawing.Color.Lime;
-            this.BuildISO.Location = new System.Drawing.Point(190, 473);
+            this.BuildISO.Location = new System.Drawing.Point(190, 496);
             this.BuildISO.Name = "BuildISO";
             this.BuildISO.Size = new System.Drawing.Size(356, 23);
             this.BuildISO.TabIndex = 7;
@@ -548,7 +555,7 @@
             // 
             this.Karoshi.AutoSize = true;
             this.Karoshi.ForeColor = System.Drawing.Color.Lime;
-            this.Karoshi.Location = new System.Drawing.Point(407, 192);
+            this.Karoshi.Location = new System.Drawing.Point(0, 0);
             this.Karoshi.Name = "Karoshi";
             this.Karoshi.Size = new System.Drawing.Size(60, 17);
             this.Karoshi.TabIndex = 19;
@@ -560,7 +567,7 @@
             // 
             this.label19.AutoSize = true;
             this.label19.ForeColor = System.Drawing.Color.Lime;
-            this.label19.Location = new System.Drawing.Point(332, 194);
+            this.label19.Location = new System.Drawing.Point(332, 217);
             this.label19.Name = "label19";
             this.label19.Size = new System.Drawing.Size(69, 13);
             this.label19.TabIndex = 20;
@@ -570,25 +577,86 @@
             // 
             this.GreenTechPlus.AutoSize = true;
             this.GreenTechPlus.ForeColor = System.Drawing.Color.Lime;
-            this.GreenTechPlus.Location = new System.Drawing.Point(467, 192);
+            this.GreenTechPlus.Location = new System.Drawing.Point(60, 0);
             this.GreenTechPlus.Name = "GreenTechPlus";
             this.GreenTechPlus.Size = new System.Drawing.Size(85, 17);
             this.GreenTechPlus.TabIndex = 21;
             this.GreenTechPlus.TabStop = true;
             this.GreenTechPlus.Text = "GreenTech+";
             this.GreenTechPlus.UseVisualStyleBackColor = true;
-            // 
+            //
+            // label20
+            //
+            this.label20.AutoSize = true;
+            this.label20.ForeColor = System.Drawing.Color.Lime;
+            this.label20.Location = new System.Drawing.Point(310, 194);
+            this.label20.Name = "label20";
+            this.label20.Size = new System.Drawing.Size(44, 13);
+            this.label20.TabIndex = 22;
+            this.label20.Text = "Target:";
+            //
+            // TargetGM81
+            //
+            this.TargetGM81.AutoSize = true;
+            this.TargetGM81.ForeColor = System.Drawing.Color.Lime;
+            this.TargetGM81.Location = new System.Drawing.Point(0, 0);
+            this.TargetGM81.Name = "TargetGM81";
+            this.TargetGM81.Size = new System.Drawing.Size(60, 17);
+            this.TargetGM81.TabIndex = 23;
+            this.TargetGM81.TabStop = true;
+            this.TargetGM81.Text = "GM 8.1";
+            this.TargetGM81.UseVisualStyleBackColor = true;
+            this.TargetGM81.CheckedChanged += new System.EventHandler(this.Target_CheckedChanged);
+            //
+            // TargetGMS14
+            //
+            this.TargetGMS14.AutoSize = true;
+            this.TargetGMS14.ForeColor = System.Drawing.Color.Lime;
+            this.TargetGMS14.Location = new System.Drawing.Point(65, 0);
+            this.TargetGMS14.Name = "TargetGMS14";
+            this.TargetGMS14.Size = new System.Drawing.Size(65, 17);
+            this.TargetGMS14.TabIndex = 24;
+            this.TargetGMS14.TabStop = true;
+            this.TargetGMS14.Text = "GMS 1.4";
+            this.TargetGMS14.UseVisualStyleBackColor = true;
+            this.TargetGMS14.CheckedChanged += new System.EventHandler(this.Target_CheckedChanged);
+            //
+            // panelRunner
+            //
+            // Separate, borderless container so these two radio buttons form their
+            // own mutual-exclusion group, independent of panelTarget's pair below -
+            // WinForms groups same-parent RadioButtons automatically, and without
+            // this they'd all wrongly share one group as siblings of the Form.
+            this.panelRunner.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(64)))), ((int)(((byte)(64)))), ((int)(((byte)(64)))));
+            this.panelRunner.Controls.Add(this.Karoshi);
+            this.panelRunner.Controls.Add(this.GreenTechPlus);
+            this.panelRunner.Location = new System.Drawing.Point(407, 215);
+            this.panelRunner.Name = "panelRunner";
+            this.panelRunner.Size = new System.Drawing.Size(145, 20);
+            this.panelRunner.TabIndex = 19;
+            //
+            // panelTarget
+            //
+            this.panelTarget.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(64)))), ((int)(((byte)(64)))), ((int)(((byte)(64)))));
+            this.panelTarget.Controls.Add(this.TargetGM81);
+            this.panelTarget.Controls.Add(this.TargetGMS14);
+            this.panelTarget.Location = new System.Drawing.Point(360, 192);
+            this.panelTarget.Name = "panelTarget";
+            this.panelTarget.Size = new System.Drawing.Size(130, 20);
+            this.panelTarget.TabIndex = 23;
+            //
             // ChovyUI
-            // 
+            //
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
             this.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(64)))), ((int)(((byte)(64)))), ((int)(((byte)(64)))));
-            this.ClientSize = new System.Drawing.Size(564, 504);
-            this.Controls.Add(this.GreenTechPlus);
+            this.ClientSize = new System.Drawing.Size(564, 527);
+            this.Controls.Add(this.panelTarget);
+            this.Controls.Add(this.label20);
             this.Controls.Add(this.label19);
             this.Controls.Add(this.pictureBox1);
             this.Controls.Add(this.Title);
-            this.Controls.Add(this.Karoshi);
+            this.Controls.Add(this.panelRunner);
             this.Controls.Add(this.label18);
             this.Controls.Add(this.TitleId);
             this.Controls.Add(this.label17);
@@ -611,6 +679,10 @@
             this.FormClosing += new System.Windows.Forms.FormClosingEventHandler(this.ChovyUI_FormClosing);
             this.groupBox1.ResumeLayout(false);
             this.groupBox1.PerformLayout();
+            this.panelRunner.ResumeLayout(false);
+            this.panelRunner.PerformLayout();
+            this.panelTarget.ResumeLayout(false);
+            this.panelTarget.PerformLayout();
             ((System.ComponentModel.ISupportInitialize)(this.pictureBox1)).EndInit();
             this.ResumeLayout(false);
             this.PerformLayout();
@@ -663,5 +735,10 @@
         private System.Windows.Forms.RadioButton Karoshi;
         private System.Windows.Forms.Label label19;
         private System.Windows.Forms.RadioButton GreenTechPlus;
+        private System.Windows.Forms.Label label20;
+        private System.Windows.Forms.RadioButton TargetGM81;
+        private System.Windows.Forms.RadioButton TargetGMS14;
+        private System.Windows.Forms.Panel panelRunner;
+        private System.Windows.Forms.Panel panelTarget;
     }
 }

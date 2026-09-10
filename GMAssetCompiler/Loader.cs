@@ -17,6 +17,16 @@ namespace GMAssetCompiler
 
 		public static GMAssets Load(string _name)
 		{
+			return Load(_name, ChovyUI.eGMTarget.GameMaker81);
+		}
+
+		public static GMAssets Load(string _name, ChovyUI.eGMTarget _target)
+		{
+			if (_target == ChovyUI.eGMTarget.GameMakerStudio14)
+			{
+				return LoadGMS14Project(_name);
+			}
+
 			GMAssets gMAssets = null;
 			if (string.Compare(Path.GetExtension(_name), ".psp", true) == 0)
 			{
@@ -36,6 +46,19 @@ namespace GMAssetCompiler
 				gMAssets.FileName = Path.GetFullPath(_name);
 			}
 			return gMAssets;
+		}
+
+		// GameMaker: Studio 1.4 project loader (.project.gmx, VM target).
+		// Unlike the GM8.1 path, there is no embedded/encrypted executable to
+		// decrypt: a .gmx project is a plain, uncompressed XML tree (a master
+		// "<name>.project.gmx" file plus per-resource-type subfolders), so this
+		// reads that XML directly into the same GMAssets graph the rest of the
+		// compiler (GML compilation, texture packing, IFFSaver) already knows
+		// how to consume unchanged.
+		public static GMAssets LoadGMS14Project(string _projectGmxPath)
+		{
+			Console.WriteLine("GameMaker: Studio 1.4 project loading is not yet implemented: {0}", _projectGmxPath);
+			return null;
 		}
 
 		private static uint[] InitFastCRC()
@@ -334,7 +357,7 @@ namespace GMAssetCompiler
                         case "TPAG": break;
 						case "STRG":
                             Console.WriteLine("DEBUG: READING STRING CHUNK!");
-                            //ебаный гейммейкер шоб горели в аду его создатели!!!!!
+                            //пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅ пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ!!!!!
                             //fuck gamemaker i want its creators to be burned in hell!!!!
 							break;
 						}

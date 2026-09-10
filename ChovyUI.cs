@@ -7,6 +7,12 @@ using System.Windows.Forms;
 
 namespace ChovyUI
 {
+    public enum eGMTarget
+    {
+        GameMaker81,
+        GameMakerStudio14
+    }
+
     public partial class ChovyUI : Form
     {
         bool wasClicked = false;
@@ -54,6 +60,18 @@ namespace ChovyUI
                     GreenTechPlus.Checked = false;
                     Karoshi.Checked = true;
                 }
+
+                string Target = key.GetValue("TARGET", "GM81").ToString();
+                if (Target == "GMS14")
+                {
+                    TargetGMS14.Checked = true;
+                    TargetGM81.Checked = false;
+                }
+                else
+                {
+                    TargetGMS14.Checked = false;
+                    TargetGM81.Checked = true;
+                }
                 key.Close();
             }
             catch (Exception) { };
@@ -88,14 +106,21 @@ namespace ChovyUI
         private void Browse_Click(object sender, EventArgs e)
         {
             OpenFileDialog openFileDialog = new OpenFileDialog();
-            openFileDialog.Filter = "GameMaker 8/8.1 Executable files (*.exe)|*.exe;";
+            if (GetTarget() == eGMTarget.GameMakerStudio14)
+            {
+                openFileDialog.Filter = "GameMaker: Studio 1.4 project files (*.project.gmx)|*.project.gmx;";
+            }
+            else
+            {
+                openFileDialog.Filter = "GameMaker 8/8.1 Executable files (*.exe)|*.exe;";
+            }
             openFileDialog.FilterIndex = 1;
             openFileDialog.RestoreDirectory = true;
             if (openFileDialog.ShowDialog() == DialogResult.OK)
             {
                 GMPath.Text = openFileDialog.FileName;
             }
-            
+
         }
 
         public static void CopyDirTree(string SourcePath, string DestinationPath)
@@ -198,6 +223,17 @@ namespace ChovyUI
         public string GetGMPath()
         {
             return GMPath.Text;
+        }
+
+        public eGMTarget GetTarget()
+        {
+            return TargetGMS14.Checked ? eGMTarget.GameMakerStudio14 : eGMTarget.GameMaker81;
+        }
+
+        private void Target_CheckedChanged(object sender, EventArgs e)
+        {
+            label14.Text = GetTarget() == eGMTarget.GameMakerStudio14 ? "GMS1.4 project" : "GM81 exe";
+            Check();
         }
 
         public string GetTitleID()
@@ -340,6 +376,8 @@ namespace ChovyUI
                 {
                     key.SetValue("RUNNER", "KAROSHI");
                 }
+
+                key.SetValue("TARGET", TargetGMS14.Checked ? "GMS14" : "GM81");
                 key.Close();
             }
             catch (Exception)

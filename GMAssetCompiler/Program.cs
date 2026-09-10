@@ -56,6 +56,14 @@ namespace GMAssetCompiler
             set;
         }
 
+        private static ChovyUI.eGMTarget ms_target = ChovyUI.eGMTarget.GameMaker81;
+
+        public static ChovyUI.eGMTarget Target
+        {
+            get { return ms_target; }
+            set { ms_target = value; }
+        }
+
         public static bool SplashOmit
 		{
 			get;
@@ -911,13 +919,16 @@ namespace GMAssetCompiler
 			Studio = false;
 
             // Headless CLI mode for scripted/testing use, bypassing the ChovyUI dialog:
-            //   CHOVY-GM.exe --headless <gm81.exe> <output dir> <RUNNER template dir> [titleID]
+            //   CHOVY-GM.exe --headless <gm81.exe|project.gmx> <output dir> <RUNNER template dir> [titleID] [gm81|gms14]
             if (_args.Length > 0 && _args[0] == "--headless")
             {
                 string gmPath = _args[1];
                 OutputDir = _args[2];
                 string runnerSrc = _args[3];
                 TitleID = _args.Length > 4 ? _args[4] : "TEST00000";
+                Target = (_args.Length > 5 && _args[5].Equals("gms14", StringComparison.OrdinalIgnoreCase))
+                    ? ChovyUI.eGMTarget.GameMakerStudio14
+                    : ChovyUI.eGMTarget.GameMaker81;
 
                 string isoTemp = Path.Combine(OutputDir, "_iso_temp");
                 if (Directory.Exists(isoTemp))
@@ -932,7 +943,7 @@ namespace GMAssetCompiler
 
                 CompileOnly = true;
                 SetMachineType("psp");
-                GMAssets headlessAssets = Loader.Load(gmPath);
+                GMAssets headlessAssets = Loader.Load(gmPath, Target);
                 if (headlessAssets == null)
                 {
                     Console.WriteLine("Failed to load: {0}", gmPath);
@@ -948,6 +959,7 @@ namespace GMAssetCompiler
             CUI.ShowDialog();
             TitleID = CUI.GetTitleID();
             string GMPath = CUI.GetGMPath();
+            Target = CUI.GetTarget();
             if(!CUI.WasClicked())
             {
                 Environment.Exit(-1);
@@ -1125,7 +1137,7 @@ namespace GMAssetCompiler
 			{
 				if (File.Exists(item))
 				{
-					gMAssets = Loader.Load(item);
+					gMAssets = Loader.Load(item, Target);
 				}
 			}
 			if (MachineType == null)
