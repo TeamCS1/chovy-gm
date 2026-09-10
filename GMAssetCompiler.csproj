@@ -139,6 +139,7 @@
     <Compile Include="GMAssetCompiler\GMPath.cs" />
     <Compile Include="GMAssetCompiler\GMPathPoint.cs" />
     <Compile Include="GMAssetCompiler\GMRoom.cs" />
+    <Compile Include="GMAssetCompiler\RunnerSupportedFunctions.cs" />
     <Compile Include="GMAssetCompiler\GMScript.cs" />
     <Compile Include="GMAssetCompiler\GMSound.cs" />
     <Compile Include="GMAssetCompiler\GMSprite.cs" />
