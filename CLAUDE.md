@@ -35,6 +35,21 @@ The built `.exe` expects to sit alongside a specific runtime folder layout (ship
 
 Launching the exe with no arguments shows the `ChovyUI` dialog first (pick a GM 8/8.1 exe, PSP Title ID, icon/pic, and controller button mapping — persisted to `HKCU\Software\CHOVYProject\Chovy-GM`). Clicking "BUILD ISO" stages `RUNNER\` into `<gmexe dir>\_iso_temp\`, then `Program.Main` re-invokes the compiler in `-c` (compile-only) mode against the chosen exe. CLI options are also parseable directly via `NDesk.Options` (`-?` for the list), but `SetMachineType` currently hardcodes PSP regardless of the `-m` flag passed.
 
+**Headless mode** (added on top of the original tool, for scripted/CI-less testing without the WinForms dialog):
+
+```
+CHOVY-GM.exe --headless <gm81.exe> <output dir> <RUNNER template dir> [titleID]
+```
+
+This replicates exactly what `ChovyUI.BuildISO_Click` + compile-only mode do (stage `RUNNER\` into `<output dir>\_iso_temp\`, select the `KAROSHI.BIN` runner as `EBOOT.BIN`, compile), without needing icon/pic files or a GUI session. Default `titleID` is `TEST00000` if omitted. See `Program.Main`'s `--headless` branch.
+
+**Native DLLs required at runtime, not restored by NuGet or committed to this repo** — copy them into `bin\Release\` (or wherever the exe runs from) from a release zip / real PSP toolchain before compiling anything for real:
+- `squish.dll` — the DXT texture compressor `Squish.cs` P/Invokes into. Without it, compilation dies with `DllNotFoundException` right at the texture-writing stage.
+- `PVRTexLib.dll` — `squish.dll`'s own dependency (texture format conversion backend).
+- `msvcr90.dll` (VC++ 2008 CRT) — also a `squish.dll` dependency. It's commonly present system-wide only as a WinSxS side-by-side assembly (`C:\Windows\WinSxS\x86_microsoft.vc90.crt_*`), and `squish.dll` apparently lacks the manifest needed to bind to it there — a private/loose copy next to the exe is the reliable fix (`Microsoft.VCRedist.2008.x86` via winget installs the WinSxS assembly to copy from).
+
+Without these three, compilation gets all the way through asset/audio parsing and dies specifically at DXT texture compression.
+
 ## Architecture
 
 ### Compile pipeline (in order)
@@ -60,3 +75,16 @@ Two separate WinForms UIs exist: `ChovyUI` (root namespace, `ChovyUI.cs`) is the
 ### Logging
 
 `GMAssetCompiler.Trace` writes to `TraceGMA.log` next to the executable, gzip-rotating it past 200KB and pruning `.gz` archives older than 30 days.
+
+## The PSP runner (`KAROSHI.BIN`/`GREENTECHPLUS.BIN`) — reverse-engineering notes
+
+These are not homebrew ELFs; they're Sony's standard signed/encrypted module format (`~PSP` header — module name embedded at offset `0x0C` literally reads `"Runner"`). This is a separate, PSP-hardware-level encryption layer (KIRK engine, tag-keyed) from the PSN PKG/RIF licensing used only for the original store *distribution* of the Minis — since these files are already-extracted, post-install EBOOTs, only the module encryption applies.
+
+**Decrypting them** doesn't require real hardware: [`John-K/pspdecrypt`](https://github.com/John-K/pspdecrypt) (GPLv3, decryption code lifted from PPSSPP itself, MIT/public-domain `libkirk` crypto with the historically-recovered PSP root keys) decrypts both files offline. Its `pspDecryptPRX()` in `PrxDecrypter.cpp` + `libkirk/*.c` is fully self-contained (no OpenSSL/zlib needed — those are only pulled in by the unrelated PSAR/firmware-updater code paths in that repo). Both `KAROSHI.BIN` and `GREENTECHPLUS.BIN` decrypt cleanly under the same signing tag (`D9160BF0`), confirming it's a publicly-known key, not something exotic. Output is a plain 32-bit MIPS ELF.
+
+**Testing the decrypted runner in PPSSPP:**
+- PPSSPP flatly rejects the *encrypted* file regardless of naming/extension tricks (`Identify_File` in `Core/Loaders.cpp` never gets a chance to accept it) — decrypt first.
+- Boot the **`_iso_temp` folder itself**, not the loose `EBOOT.BIN` file directly. Pointing PPSSPP at the bare EBOOT file skips the `disc0:` virtual filesystem mount, so the runner's own `sceIoOpen("disc0:/PSP_GAME/USRDIR/games/game.psp", ...)` calls fail with `NODEV` and it never sees your compiled data at all, even though the file is sitting right there. Booting the folder (which PPSSPP recognizes as `PSP_DISC_DIRECTORY` since it contains a `PSP_GAME` subfolder) mounts `disc0:` properly.
+- Use `CPUCore = 0` (Interpreter) in `ppsspp.ini`, not the default JIT. Under JIT the runner segfaults PPSSPP itself (host-level `0xc0000005`, confirmed via Windows Event Log) partway through generic PSP SDK init code — this reproduces with *just the bare runner*, no GameMaker content involved, so it's a PPSSPP JIT-recompiler bug tickled by this old/unusual code, not a bug in the runner or in compiled output. The interpreter runs the identical code without crashing (just much slower).
+
+**Observed behavior with a real compiled `game.psp`:** boots, renders the real YoYoGames splash correctly (confirms the full texture/sprite/rendering pipeline works end-to-end), then always runs the same fixed shutdown sequence — `sceUtilityUnloadModule` ×3, an attempt to open `gamemaker.hiscore` for writing, then exit — and returns to the PPSSPP menu. This happens identically regardless of whether `disc0:` successfully resolved the compiled game data or not, and takes a *precisely* fixed amount of time each run (confirmed by wall-clock: ~4:00.16 under the interpreter, a literal split-second under JIT) — meaning it's a fixed counter, not a hang or a content-dependent failure. Leading hypothesis, given the runner is literally the real *Karoshi* PSP Minis executable: this is a PSN license/activation check baked into Karoshi's own boot sequence, unconditionally failing under any emulator (no legitimate activation to satisfy) and exiting before anything GameMaker-specific gets a chance to run. **Next step for anyone continuing this**: find what gates the transition from "show splash" to "unload + exit" in `karoshi_decrypted.elf` via Ghidra, and confirm/patch it.

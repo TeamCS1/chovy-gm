@@ -910,6 +910,40 @@ namespace GMAssetCompiler
 			TextureScale = 1;
 			Studio = false;
 
+            // Headless CLI mode for scripted/testing use, bypassing the ChovyUI dialog:
+            //   CHOVY-GM.exe --headless <gm81.exe> <output dir> <RUNNER template dir> [titleID]
+            if (_args.Length > 0 && _args[0] == "--headless")
+            {
+                string gmPath = _args[1];
+                OutputDir = _args[2];
+                string runnerSrc = _args[3];
+                TitleID = _args.Length > 4 ? _args[4] : "TEST00000";
+
+                string isoTemp = Path.Combine(OutputDir, "_iso_temp");
+                if (Directory.Exists(isoTemp))
+                {
+                    Directory.Delete(isoTemp, true);
+                }
+                ChovyUI.ChovyUI.CopyDirTree(runnerSrc, isoTemp);
+
+                string sysdir = Path.Combine(isoTemp, "PSP_GAME", "SYSDIR");
+                File.Delete(Path.Combine(sysdir, "GREENTECHPLUS.BIN"));
+                File.Move(Path.Combine(sysdir, "KAROSHI.BIN"), Path.Combine(sysdir, "EBOOT.BIN"));
+
+                CompileOnly = true;
+                SetMachineType("psp");
+                GMAssets headlessAssets = Loader.Load(gmPath);
+                if (headlessAssets == null)
+                {
+                    Console.WriteLine("Failed to load: {0}", gmPath);
+                    return -1;
+                }
+                Assets = headlessAssets;
+                IFFSaver.Save(headlessAssets, "game.psp");
+                Console.WriteLine("Wrote {0}", Path.Combine(isoTemp, "PSP_GAME", "USRDIR", "games", "game.psp"));
+                return ExitCode;
+            }
+
             ChovyUI.ChovyUI CUI = new ChovyUI.ChovyUI();
             CUI.ShowDialog();
             TitleID = CUI.GetTitleID();
