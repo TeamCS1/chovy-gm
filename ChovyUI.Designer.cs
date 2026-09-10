@@ -58,6 +58,7 @@
             this.label14 = new System.Windows.Forms.Label();
             this.BrowseEXE = new System.Windows.Forms.Button();
             this.BuildISO = new System.Windows.Forms.Button();
+            this.StageDecryptedEboot = new System.Windows.Forms.CheckBox();
             this.label15 = new System.Windows.Forms.Label();
             this.IconPath = new System.Windows.Forms.TextBox();
             this.BrowseIcon = new System.Windows.Forms.Button();
@@ -415,11 +416,29 @@
             this.BrowseEXE.UseVisualStyleBackColor = true;
             this.BrowseEXE.Click += new System.EventHandler(this.Browse_Click);
             // 
+            // StageDecryptedEboot
+            //
+            // Opt-in, off by default: overwrites the staged EBOOT.BIN with a
+            // pre-decrypted copy (from RUNNER_DECRYPTED\ next to this exe)
+            // after a normal build, purely so the result boots directly in
+            // PPSSPP for testing. Leaves the real encrypted RUNNER template
+            // untouched - a distribution build without this checked is
+            // unaffected. See CLAUDE.md for why PPSSPP can't boot the
+            // original encrypted EBOOT.BIN at all.
+            this.StageDecryptedEboot.AutoSize = true;
+            this.StageDecryptedEboot.ForeColor = System.Drawing.Color.Lime;
+            this.StageDecryptedEboot.Location = new System.Drawing.Point(190, 496);
+            this.StageDecryptedEboot.Name = "StageDecryptedEboot";
+            this.StageDecryptedEboot.Size = new System.Drawing.Size(300, 17);
+            this.StageDecryptedEboot.TabIndex = 25;
+            this.StageDecryptedEboot.Text = "Stage decrypted EBOOT for PPSSPP testing";
+            this.StageDecryptedEboot.UseVisualStyleBackColor = true;
+            //
             // BuildISO
-            // 
+            //
             this.BuildISO.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
             this.BuildISO.ForeColor = System.Drawing.Color.Lime;
-            this.BuildISO.Location = new System.Drawing.Point(190, 496);
+            this.BuildISO.Location = new System.Drawing.Point(190, 521);
             this.BuildISO.Name = "BuildISO";
             this.BuildISO.Size = new System.Drawing.Size(356, 23);
             this.BuildISO.TabIndex = 7;
@@ -650,7 +669,7 @@
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
             this.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(64)))), ((int)(((byte)(64)))), ((int)(((byte)(64)))));
-            this.ClientSize = new System.Drawing.Size(564, 527);
+            this.ClientSize = new System.Drawing.Size(564, 552);
             this.Controls.Add(this.panelTarget);
             this.Controls.Add(this.label20);
             this.Controls.Add(this.label19);
@@ -666,6 +685,7 @@
             this.Controls.Add(this.BrowseIcon);
             this.Controls.Add(this.IconPath);
             this.Controls.Add(this.label15);
+            this.Controls.Add(this.StageDecryptedEboot);
             this.Controls.Add(this.BuildISO);
             this.Controls.Add(this.BrowseEXE);
             this.Controls.Add(this.label14);
@@ -721,6 +741,7 @@
         private System.Windows.Forms.Label label14;
         private System.Windows.Forms.Button BrowseEXE;
         private System.Windows.Forms.Button BuildISO;
+        private System.Windows.Forms.CheckBox StageDecryptedEboot;
         private System.Windows.Forms.Label label15;
         private System.Windows.Forms.TextBox IconPath;
         private System.Windows.Forms.Button BrowseIcon;

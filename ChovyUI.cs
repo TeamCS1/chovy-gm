@@ -61,6 +61,8 @@ namespace ChovyUI
                     Karoshi.Checked = true;
                 }
 
+                StageDecryptedEboot.Checked = key.GetValue("STAGE_DECRYPTED_EBOOT", "0").ToString() == "1";
+
                 string Target = key.GetValue("TARGET", "GM81").ToString();
                 if (Target == "GMS14")
                 {
@@ -123,6 +125,33 @@ namespace ChovyUI
 
         }
 
+        // Overwrites the just-staged EBOOT.BIN (still the original Sony-
+        // encrypted runner, renamed) with a pre-decrypted copy, purely so the
+        // build boots directly in PPSSPP for testing - PPSSPP flatly refuses
+        // encrypted EBOOTs (see CLAUDE.md). Looks for the decrypted files in
+        // RUNNER_DECRYPTED\ next to this exe, matching the RUNNER\ template
+        // folder's own convention; these aren't shipped or committed to the
+        // repo (same as RUNNER\ itself) since they're derived from Sony-
+        // signed content - decrypt once yourself (see the reverse-engineering
+        // notes in CLAUDE.md) and place KAROSHI.BIN/GREENTECHPLUS.BIN there.
+        // Silently does nothing but log a warning if the file isn't present,
+        // so this is always safe to call unconditionally.
+        public static void StageDecryptedEbootForTesting(string _isoTempDir, bool _greenTechPlus)
+        {
+            string decryptedName = _greenTechPlus ? "GREENTECHPLUS.BIN" : "KAROSHI.BIN";
+            string decryptedSource = Path.Combine(Application.StartupPath, "RUNNER_DECRYPTED", decryptedName);
+            string ebootDest = Path.Combine(_isoTempDir, "PSP_GAME", "SYSDIR", "EBOOT.BIN");
+            if (File.Exists(decryptedSource))
+            {
+                File.Copy(decryptedSource, ebootDest, true);
+                Console.WriteLine("Staged decrypted EBOOT.BIN for PPSSPP testing (from {0}).", decryptedSource);
+            }
+            else
+            {
+                Console.WriteLine("Warning: decrypted-EBOOT staging was requested but no decrypted runner was found at {0} - EBOOT.BIN was left as the original encrypted file.", decryptedSource);
+            }
+        }
+
         public static void CopyDirTree(string SourcePath, string DestinationPath)
         {
             //Now Create all of the directories
@@ -172,6 +201,11 @@ namespace ChovyUI
             {
                 File.Delete(Path.Combine(InputFolder, "PSP_GAME", "SYSDIR", "GREENTECHPLUS.BIN"));
                 File.Move(Path.Combine(InputFolder, "PSP_GAME", "SYSDIR", "KAROSHI.BIN"), Path.Combine(InputFolder, "PSP_GAME", "SYSDIR", "EBOOT.BIN"));
+            }
+
+            if (StageDecryptedEboot.Checked)
+            {
+                StageDecryptedEbootForTesting(InputFolder, GreenTechPlus.Checked);
             }
 
             //Write to PARAM.SFO:
@@ -378,6 +412,7 @@ namespace ChovyUI
                 }
 
                 key.SetValue("TARGET", TargetGMS14.Checked ? "GMS14" : "GM81");
+                key.SetValue("STAGE_DECRYPTED_EBOOT", StageDecryptedEboot.Checked ? "1" : "0");
                 key.Close();
             }
             catch (Exception)

@@ -930,16 +930,23 @@ namespace GMAssetCompiler
 			Studio = false;
 
             // Headless CLI mode for scripted/testing use, bypassing the ChovyUI dialog:
-            //   CHOVY-GM.exe --headless <gm81.exe|project.gmx> <output dir> <RUNNER template dir> [titleID] [gm81|gms14]
+            //   CHOVY-GM.exe --headless <gm81.exe|project.gmx> <output dir> <RUNNER template dir> [titleID] [gm81|gms14] [--decrypt-eboot]
+            // --decrypt-eboot can appear anywhere after the required args - it
+            // overwrites the staged EBOOT.BIN with a pre-decrypted copy from
+            // RUNNER_DECRYPTED\ next to this exe (same convention/rationale
+            // as ChovyUI's "Stage decrypted EBOOT for PPSSPP testing"
+            // checkbox - see CLAUDE.md), purely so the result boots directly
+            // in PPSSPP; a real distribution build should omit this flag.
             if (_args.Length > 0 && _args[0] == "--headless")
             {
                 string gmPath = _args[1];
                 OutputDir = _args[2];
                 string runnerSrc = _args[3];
-                TitleID = _args.Length > 4 ? _args[4] : "TEST00000";
+                TitleID = _args.Length > 4 && _args[4] != "--decrypt-eboot" ? _args[4] : "TEST00000";
                 Target = (_args.Length > 5 && _args[5].Equals("gms14", StringComparison.OrdinalIgnoreCase))
                     ? ChovyUI.eGMTarget.GameMakerStudio14
                     : ChovyUI.eGMTarget.GameMaker81;
+                bool decryptEboot = Array.Exists(_args, a => a.Equals("--decrypt-eboot", StringComparison.OrdinalIgnoreCase));
 
                 string isoTemp = Path.Combine(OutputDir, "_iso_temp");
                 if (Directory.Exists(isoTemp))
@@ -951,6 +958,11 @@ namespace GMAssetCompiler
                 string sysdir = Path.Combine(isoTemp, "PSP_GAME", "SYSDIR");
                 File.Delete(Path.Combine(sysdir, "GREENTECHPLUS.BIN"));
                 File.Move(Path.Combine(sysdir, "KAROSHI.BIN"), Path.Combine(sysdir, "EBOOT.BIN"));
+
+                if (decryptEboot)
+                {
+                    ChovyUI.ChovyUI.StageDecryptedEbootForTesting(isoTemp, false);
+                }
 
                 CompileOnly = true;
                 SetMachineType("psp");
