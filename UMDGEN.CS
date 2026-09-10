@@ -104,7 +104,7 @@ namespace UmdGen
 
         }
 
-        public static void CreateISO(string UmiFile, string OutputDir)
+        public static bool CreateISO(string UmiFile, string OutputDir)
         {
             Process UmdGen = new Process();
             //This would be too simple, sonys software is buggy af and doenst like being run 
@@ -120,14 +120,29 @@ namespace UmdGen
             UmdGen.StartInfo.RedirectStandardError = true;
             
             Console.WriteLine(UmdGen.StartInfo.FileName + " " + UmdGen.StartInfo.Arguments);
-            UmdGen.Start();
+            try
+            {
+                UmdGen.Start();
+            }
+            catch (Exception ex)
+            {
+                // umdgenc.exe is an external Sony tool, not part of this repo
+                // (see CLAUDE.md's "Running" section) - a missing/misplaced
+                // copy is a known, expected gap, not a reason to crash the
+                // whole app and take the GUI's build-log console down with it
+                // before the user can read anything that was printed above.
+                // The .psp itself is already written by this point regardless.
+                Console.WriteLine("Could not run umdgenc.exe ({0}) - the final ISO was not built, but game.psp was already compiled successfully. umdgenc.exe is an external Sony tool that must be placed next to this exe (see CLAUDE.md) if you need a bootable ISO.", ex.Message);
+                return false;
+            }
             UmdGen.WaitForExit();
             if (UmdGen.ExitCode != 0)
             {
                 Console.WriteLine(UmdGen.StandardOutput.ReadToEnd() + UmdGen.StandardError.ReadToEnd());
-                return;
+                return false;
             }
             UmdGen.Dispose();
+            return true;
         }
     }
 }

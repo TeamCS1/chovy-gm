@@ -891,6 +891,7 @@ namespace GMAssetCompiler
 				gMAssets = new GMAssets(_stream, true);
 			}
 			TagBackgroundTilesets(gMAssets);
+			GMLFunctionValidator.ValidateAssets(gMAssets);
 			return gMAssets;
 		}
 

@@ -159,27 +159,38 @@ namespace GMAssetCompiler
             String UflFile = Path.ChangeExtension(UmiFile, "ufl");
             UMDGEN.CreateUmi(UmiFile);
             UMDGEN.CreateUfl(UflFile, InputFolder);
-            UMDGEN.CreateISO(UmiFile, Program.OutputDir);
+            bool isoBuilt = UMDGEN.CreateISO(UmiFile, Program.OutputDir);
 
-            File.Delete(Path.Combine(Program.OutputDir, "UMD_AUTH.DAT"));
-            File.Delete(Path.Combine(Program.OutputDir, "CONT_L0.IMG"));
-            File.Delete(Path.Combine(Program.OutputDir, "MDI.IMG"));
-            File.Delete(Path.Combine(Program.OutputDir, "UmiFile.ufl"));
-            File.Delete(Path.Combine(Program.OutputDir, "UmiFile.umi"));
-            if(File.Exists(ISOPath))
+            if (isoBuilt)
             {
-                File.Delete(ISOPath);
-            }
+                File.Delete(Path.Combine(Program.OutputDir, "UMD_AUTH.DAT"));
+                File.Delete(Path.Combine(Program.OutputDir, "CONT_L0.IMG"));
+                File.Delete(Path.Combine(Program.OutputDir, "MDI.IMG"));
+                File.Delete(Path.Combine(Program.OutputDir, "UmiFile.ufl"));
+                File.Delete(Path.Combine(Program.OutputDir, "UmiFile.umi"));
+                if(File.Exists(ISOPath))
+                {
+                    File.Delete(ISOPath);
+                }
 
-            File.Move(Path.Combine(Program.OutputDir, "USER_L0.IMG"), ISOPath);
-            if (Directory.Exists(InputFolder))
+                File.Move(Path.Combine(Program.OutputDir, "USER_L0.IMG"), ISOPath);
+                if (Directory.Exists(InputFolder))
+                {
+                    Directory.Delete(InputFolder, true);
+                }
+                Console.WriteLine("Done!");
+
+                MessageBox.Show("ISO Built @ " + ISOPath, "Complete", MessageBoxButtons.OK, MessageBoxIcon.Information);
+            }
+            else
             {
-                Directory.Delete(InputFolder, true);
+                // No MessageBox here deliberately: this path is hit on every
+                // --headless run too (umdgenc.exe is never present in that
+                // setup), and a MessageBox there would block forever with no
+                // one to click it. The console window (GUI mode) or terminal
+                // (--headless) already shows UMDGEN.CreateISO's own message.
+                Console.WriteLine("ISO build skipped - game.psp is still ready at {0}", InputFolder);
             }
-            Console.WriteLine("Done!");
-
-            MessageBox.Show("ISO Built @ " + ISOPath, "Complete", MessageBoxButtons.OK, MessageBoxIcon.Information);
-
         }
 
         public static void Save(GMAssets _assets, Stream _stream, List<string> _extraFilenames)

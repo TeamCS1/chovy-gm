@@ -1204,6 +1204,15 @@ namespace GMAssetCompiler
 					HTML5Saver.Save(gMAssets, name);
 					break;
 				}
+				// This branch is only reached from the GUI's "Build ISO" flow
+				// (the true --headless CLI path already returned earlier, and
+				// must stay non-interactive for scripted/CI use) - without a
+				// pause here, the process (and its build-log console window)
+				// exits the instant the build finishes, yanking the window
+				// away before anyone reading it gets a chance to.
+				Console.WriteLine();
+				Console.WriteLine("Build finished. Press any key to close this window...");
+				Console.ReadKey(true);
 			}
 			return ExitCode;
 		}

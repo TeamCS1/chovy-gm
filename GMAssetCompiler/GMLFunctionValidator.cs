@@ -20,7 +20,7 @@ namespace GMAssetCompiler
 		{
 			"if", "while", "for", "do", "until", "repeat", "with", "switch", "case", "default",
 			"return", "exit", "var", "globalvar", "break", "continue", "not", "and", "or", "xor",
-			"else", "then", "begin", "end"
+			"else", "then", "begin", "end", "div", "mod"
 		};
 
 		private static readonly Regex CallPattern = new Regex(@"\b([A-Za-z_][A-Za-z0-9_]*)\s*\(", RegexOptions.Compiled);
