@@ -129,6 +129,7 @@
     <Compile Include="GMAssetCompiler\GML2VM.cs" />
     <Compile Include="GMAssetCompiler\GMLCode.cs" />
     <Compile Include="GMAssetCompiler\GMLCompile.cs" />
+    <Compile Include="GMAssetCompiler\GMLFunctionValidator.cs" />
     <Compile Include="GMAssetCompiler\GMLError.cs" />
     <Compile Include="GMAssetCompiler\GMLFunction.cs" />
     <Compile Include="GMAssetCompiler\GMLToken.cs" />

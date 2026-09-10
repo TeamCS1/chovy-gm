@@ -7,6 +7,7 @@ using System.IO;
 using System.Net;
 using System.Net.Mail;
 using System.Reflection;
+using System.Runtime.InteropServices;
 using System.Text;
 using System.Windows.Forms;
 
@@ -14,6 +15,16 @@ namespace GMAssetCompiler
 {
     internal static class Program
     {
+        // The GUI build (WinForms, OutputType=WinExe) has no console attached
+        // when launched normally (double-click), so every Console.WriteLine
+        // warning throughout this tool - the GML function validator included -
+        // is otherwise silently discarded with no way for the user to see it.
+        // Opening one explicitly for the GUI path gives a live, separate log
+        // window without changing --headless CLI behavior (which already
+        // inherits its parent shell's console; AllocConsole is a no-op there).
+        [DllImport("kernel32.dll")]
+        private static extern bool AllocConsole();
+
         private static OptionSet m_options;
 
         //public static bool IsPSPFileLoaded = false;
@@ -954,6 +965,11 @@ namespace GMAssetCompiler
                 Console.WriteLine("Wrote {0}", Path.Combine(isoTemp, "PSP_GAME", "USRDIR", "games", "game.psp"));
                 return ExitCode;
             }
+
+            AllocConsole();
+            Out = Console.Out;
+            Console.Title = "CHOVY-GM Build Log";
+            Console.WriteLine("CHOVY-GM build log - warnings and progress messages appear here.");
 
             ChovyUI.ChovyUI CUI = new ChovyUI.ChovyUI();
             CUI.ShowDialog();
