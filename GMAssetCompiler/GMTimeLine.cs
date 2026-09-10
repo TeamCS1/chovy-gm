@@ -11,6 +11,12 @@ namespace GMAssetCompiler
 			private set;
 		}
 
+		// Plain-value constructor for non-GM8.1 loaders (e.g. .gmx projects).
+		public GMTimeLine(IList<KeyValuePair<int, GMEvent>> _entries)
+		{
+			Entries = _entries;
+		}
+
 		public GMTimeLine(GMAssets _a, Stream _stream)
 		{
 			_stream.ReadInteger();

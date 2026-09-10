@@ -46,6 +46,18 @@ namespace GMAssetCompiler
 			private set;
 		}
 
+		// Plain-value constructor for non-GM8.1 loaders (e.g. .gmx projects).
+		public GMBackground(int _width, int _height, bool _transparent, bool _smooth, bool _preload, bool _tileset, GMBitmap32 _bitmap)
+		{
+			Width = _width;
+			Height = _height;
+			Transparent = _transparent;
+			Smooth = _smooth;
+			Preload = _preload;
+			Tileset = _tileset;
+			Bitmap = _bitmap;
+		}
+
 		public GMBackground(GMAssets _a, Stream _s)
 		{
 			switch (_s.ReadInteger())

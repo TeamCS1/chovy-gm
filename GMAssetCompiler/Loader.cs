@@ -82,9 +82,44 @@ namespace GMAssetCompiler
 
 			GMAssets assets = new GMAssets(projectName, 0, Guid.NewGuid());
 
-			WarnIfUnsupportedResources(root, "sounds", "sound");
-			WarnIfUnsupportedResources(root, "backgrounds", "background");
-			WarnIfUnsupportedResources(root, "paths", "path");
+			XElement soundsEl = root.Element("sounds");
+			if (soundsEl != null)
+			{
+				foreach (XElement soundRef in soundsEl.Elements("sound"))
+				{
+					string relPath = soundRef.Value.Trim();
+					string name = Path.GetFileName(relPath);
+					string soundFile = Path.Combine(projectDir, ToNativePath(relPath) + ".sound.gmx");
+					GMSound sound = LoadGMS14Sound(soundFile);
+					assets.Sounds.Add(new KeyValuePair<string, GMSound>(name, sound));
+				}
+			}
+
+			XElement backgroundsEl = root.Element("backgrounds");
+			if (backgroundsEl != null)
+			{
+				foreach (XElement backgroundRef in backgroundsEl.Elements("background"))
+				{
+					string relPath = backgroundRef.Value.Trim();
+					string name = Path.GetFileName(relPath);
+					string backgroundFile = Path.Combine(projectDir, ToNativePath(relPath) + ".background.gmx");
+					GMBackground background = LoadGMS14Background(backgroundFile);
+					assets.Backgrounds.Add(new KeyValuePair<string, GMBackground>(name, background));
+				}
+			}
+
+			XElement pathsEl = root.Element("paths");
+			if (pathsEl != null)
+			{
+				foreach (XElement pathRef in pathsEl.Elements("path"))
+				{
+					string relPath = pathRef.Value.Trim();
+					string name = Path.GetFileName(relPath);
+					string pathFile = Path.Combine(projectDir, ToNativePath(relPath) + ".path.gmx");
+					GMPath path = LoadGMS14Path(pathFile);
+					assets.Paths.Add(new KeyValuePair<string, GMPath>(name, path));
+				}
+			}
 
 			Dictionary<string, int> spriteIndex = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
 			XElement spritesEl = root.Element("sprites");
@@ -124,6 +159,20 @@ namespace GMAssetCompiler
 					string fontFile = Path.Combine(projectDir, ToNativePath(relPath) + ".font.gmx");
 					GMFont font = LoadGMS14Font(fontFile);
 					assets.Fonts.Add(new KeyValuePair<string, GMFont>(name, font));
+				}
+			}
+
+			XElement timelinesEl = root.Element("timelines");
+			if (timelinesEl != null)
+			{
+				foreach (XElement timelineRef in timelinesEl.Elements("timeline"))
+				{
+					string relPath = timelineRef.Value.Trim();
+					string name = Path.GetFileName(relPath);
+					string timelineFile = Path.Combine(projectDir, ToNativePath(relPath) + ".timeline.gmx");
+					XElement timelineXml = XDocument.Load(timelineFile).Root;
+					GMTimeLine timeline = LoadGMS14TimeLine(timelineXml);
+					assets.TimeLines.Add(new KeyValuePair<string, GMTimeLine>(name, timeline));
 				}
 			}
 
@@ -174,13 +223,90 @@ namespace GMAssetCompiler
 			return _gmxRelativePath.Replace('\\', Path.DirectorySeparatorChar).Replace('/', Path.DirectorySeparatorChar);
 		}
 
-		private static void WarnIfUnsupportedResources(XElement _root, string _listElementName, string _resourceKind)
+		private static GMSound LoadGMS14Sound(string _soundFile)
 		{
-			XElement listEl = _root.Element(_listElementName);
-			if (listEl != null && listEl.Elements().Any())
+			XElement soundXml = XDocument.Load(_soundFile).Root;
+			string soundDir = Path.GetDirectoryName(_soundFile);
+
+			int kind = XInt(soundXml, "kind");
+			string extension = XVal(soundXml, "extension");
+			string origName = XVal(soundXml, "origname");
+			int effects = XInt(soundXml, "effects");
+			XElement volumeEl = soundXml.Element("volume");
+			double volume = volumeEl != null ? XDouble(volumeEl, "volume", 1.0) : 1.0;
+			double pan = XDouble(soundXml, "pan", 0.0);
+			bool preload = XBool(soundXml, "preload");
+
+			string dataFileName = XVal(soundXml, "data");
+			byte[] data = null;
+			if (!string.IsNullOrEmpty(dataFileName))
 			{
-				Console.WriteLine("Warning: this .gmx project has {0} resource(s), which the GameMaker: Studio 1.4 loader does not yet support - they will be skipped.", _resourceKind);
+				string audioFile = Path.Combine(soundDir, "audio", ToNativePath(dataFileName));
+				data = File.ReadAllBytes(audioFile);
 			}
+
+			return new GMSound(kind, extension, origName, effects, volume, pan, preload, data);
+		}
+
+		private static GMBackground LoadGMS14Background(string _backgroundFile)
+		{
+			XElement backgroundXml = XDocument.Load(_backgroundFile).Root;
+			string backgroundDir = Path.GetDirectoryName(_backgroundFile);
+
+			bool tileset = XBool(backgroundXml, "istileset");
+			string imageFile = Path.Combine(backgroundDir, ToNativePath(XVal(backgroundXml, "data")));
+			GMBitmap32 bitmap = GMBitmap32.FromFile(imageFile);
+
+			return new GMBackground(bitmap.Width, bitmap.Height, true, false, true, tileset, bitmap);
+		}
+
+		private static GMPath LoadGMS14Path(string _pathFile)
+		{
+			XElement pathXml = XDocument.Load(_pathFile).Root;
+
+			int kind = XInt(pathXml, "kind");
+			bool closed = XBool(pathXml, "closed");
+			int precision = XInt(pathXml, "precision");
+
+			List<GMPathPoint> points = new List<GMPathPoint>();
+			XElement pointsEl = pathXml.Element("points");
+			if (pointsEl != null)
+			{
+				foreach (XElement pointEl in pointsEl.Elements("point"))
+				{
+					string[] parts = pointEl.Value.Trim().Split(',');
+					double x = double.Parse(parts[0], CultureInfo.InvariantCulture);
+					double y = double.Parse(parts[1], CultureInfo.InvariantCulture);
+					double speed = double.Parse(parts[2], CultureInfo.InvariantCulture);
+					points.Add(new GMPathPoint(x, y, speed));
+				}
+			}
+
+			return new GMPath(kind, closed, precision, points);
+		}
+
+		private static GMTimeLine LoadGMS14TimeLine(XElement _timelineXml)
+		{
+			List<KeyValuePair<int, GMEvent>> entries = new List<KeyValuePair<int, GMEvent>>();
+			foreach (XElement entryEl in _timelineXml.Elements("entry"))
+			{
+				int step = XInt(entryEl, "step");
+				List<GMAction> actions = new List<GMAction>();
+				XElement eventEl = entryEl.Element("event");
+				if (eventEl != null)
+				{
+					foreach (XElement actionEl in eventEl.Elements("action"))
+					{
+						GMAction action = LoadGMS14Action(actionEl);
+						if (action != null)
+						{
+							actions.Add(action);
+						}
+					}
+				}
+				entries.Add(new KeyValuePair<int, GMEvent>(step, new GMEvent(actions)));
+			}
+			return new GMTimeLine(entries);
 		}
 
 		private static GMSprite LoadGMS14Sprite(string _spriteFile)
@@ -327,7 +453,11 @@ namespace GMAssetCompiler
 					List<GMAction> actions = new List<GMAction>();
 					foreach (XElement actionEl in eventEl.Elements("action"))
 					{
-						actions.Add(LoadGMS14Action(actionEl));
+						GMAction action = LoadGMS14Action(actionEl);
+						if (action != null)
+						{
+							actions.Add(action);
+						}
 					}
 					if (eventType >= 0 && eventType < events.Count)
 					{
@@ -341,10 +471,24 @@ namespace GMAssetCompiler
 
 		// Only plain GML code actions (<kind>7</kind>/<exetype>2</exetype>, the
 		// shape GameMaker: Studio 1.4 emits for a code block dropped into an
-		// event) are supported - drag-and-drop library actions have no GML
-		// source to extract and are out of scope for this loader.
+		// event) are supported - drag-and-drop library actions (<kind>0</kind>,
+		// with a <functionname> and typed <arguments> instead of a single GML
+		// string) have no GML source to extract and are out of scope for this
+		// loader. Returning null and skipping them here - rather than
+		// mis-wrapping their first argument as if it were GML code, which
+		// would either fail to compile or silently compile into a meaningless
+		// no-op expression statement - keeps the failure mode "action is
+		// missing" instead of "action runs but does something wrong".
 		private static GMAction LoadGMS14Action(XElement _actionEl)
 		{
+			int kind = XInt(_actionEl, "kind");
+			if (kind != (int)eAction.ACT_CODE)
+			{
+				string functionName = XVal(_actionEl, "functionname");
+				Console.WriteLine("Warning: skipping unsupported drag-and-drop action '{0}' (kind {1}) - only plain GML code actions are supported by this loader.", string.IsNullOrEmpty(functionName) ? "?" : functionName, kind);
+				return null;
+			}
+
 			int id = XInt(_actionEl, "id");
 			string code = string.Empty;
 			XElement argumentsEl = _actionEl.Element("arguments");
@@ -478,6 +622,12 @@ namespace GMAssetCompiler
 		private static bool XBool(XElement _parent, string _name)
 		{
 			return XInt(_parent, _name) != 0;
+		}
+
+		private static double XDouble(XElement _parent, string _name, double _default)
+		{
+			double result;
+			return double.TryParse(XVal(_parent, _name), NumberStyles.Float, CultureInfo.InvariantCulture, out result) ? result : _default;
 		}
 
 		private static string AttrVal(XElement _el, string _name)

@@ -29,6 +29,15 @@ namespace GMAssetCompiler
 			private set;
 		}
 
+		// Plain-value constructor for non-GM8.1 loaders (e.g. .gmx projects).
+		public GMPath(int _kind, bool _closed, int _precision, IList<GMPathPoint> _points)
+		{
+			Kind = _kind;
+			Closed = _closed;
+			Precision = _precision;
+			Points = _points;
+		}
+
 		public GMPath(GMAssets _a, Stream _s)
 		{
 			_s.ReadInteger();

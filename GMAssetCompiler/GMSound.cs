@@ -60,6 +60,19 @@ namespace GMAssetCompiler
 			private set;
 		}
 
+		// Plain-value constructor for non-GM8.1 loaders (e.g. .gmx projects).
+		public GMSound(int _kind, string _extension, string _origName, int _effects, double _volume, double _pan, bool _preload, byte[] _data)
+		{
+			Kind = _kind;
+			Extension = _extension;
+			OrigName = _origName;
+			Effects = _effects;
+			Volume = _volume;
+			Pan = _pan;
+			Preload = _preload;
+			Data = _data;
+		}
+
 		public GMSound(GMAssets _a, Stream _s)
 		{
 			int num = _s.ReadInteger();
