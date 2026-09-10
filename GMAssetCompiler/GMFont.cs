@@ -69,6 +69,25 @@ namespace GMAssetCompiler
 			private set;
 		}
 
+		// Plain-value constructor for non-GM8.1 loaders (e.g. .gmx projects).
+		// Unlike GM8.1's own binary format (which renders and embeds the glyph
+		// atlas itself at compile time), GMS1.4 already exports a pre-rendered
+		// glyph atlas PNG alongside the .font.gmx XML - loading it is exactly
+		// as simple as loading a sprite frame, no glyph rasterization needed.
+		public GMFont(string _name, int _size, bool _bold, bool _italic, int _first, int _last, IList<GMGlyph> _glyphs, Bitmap _bitmap)
+		{
+			Name = _name;
+			Size = _size;
+			Bold = _bold;
+			Italic = _italic;
+			First = _first;
+			Last = _last;
+			CharSet = 0;
+			AntiAlias = 0;
+			Glyphs = _glyphs;
+			Bitmap = _bitmap;
+		}
+
 		public GMFont(GMAssets _a, Stream _s)
 		{
 			int num = _s.ReadInteger();

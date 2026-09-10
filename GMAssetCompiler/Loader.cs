@@ -114,6 +114,19 @@ namespace GMAssetCompiler
 				}
 			}
 
+			XElement fontsEl = root.Element("fonts");
+			if (fontsEl != null)
+			{
+				foreach (XElement fontRef in fontsEl.Elements("font"))
+				{
+					string relPath = fontRef.Value.Trim();
+					string name = Path.GetFileName(relPath);
+					string fontFile = Path.Combine(projectDir, ToNativePath(relPath) + ".font.gmx");
+					GMFont font = LoadGMS14Font(fontFile);
+					assets.Fonts.Add(new KeyValuePair<string, GMFont>(name, font));
+				}
+			}
+
 			// Objects are read in two passes: names/indices first, then bodies -
 			// so a parentName/objName reference to an object later in the list
 			// (or to itself) still resolves, matching how GM8.1's own indices work.
@@ -199,6 +212,75 @@ namespace GMAssetCompiler
 			bool transparent = true;
 			bool colCheck = colKind != 0;
 			return new GMSprite(xorig, yorig, images, bboxLeft, bboxRight, bboxTop, bboxBottom, bboxMode, transparent, false, true, colCheck, sepMasks);
+		}
+
+		// Unlike GM8.1's own binary format, GMS1.4 already renders and exports
+		// the glyph atlas as a plain PNG (white glyphs on transparent, same
+		// convention IFFSaver already expects) alongside the .font.gmx XML, so
+		// there is no rasterization to reimplement here - just load the image
+		// and carry over its own pre-computed per-glyph pixel metrics.
+		//
+		// One non-obvious wrinkle: the on-device runner indexes a font's
+		// glyph list DIRECTLY by raw character code (0-255), not by an
+		// offset from First - First/Last are just metadata. GM8.1's own
+		// binary format reflects this by always storing exactly 256 glyph
+		// slots regardless of the font's actual range (confirmed by
+		// GMFont's Stream constructor, which unconditionally loops 256
+		// times). A .gmx font's XML only lists the glyphs that actually
+		// exist (e.g. 32-127), so those have to be placed at their real
+		// character-code index in a full 256-slot list, with everything
+		// else left as a blank (all-zero) placeholder glyph - otherwise
+		// every character renders as whatever glyph happens to sit at
+		// that raw code's offset into a too-short list instead.
+		private static GMFont LoadGMS14Font(string _fontFile)
+		{
+			XElement fontXml = XDocument.Load(_fontFile).Root;
+			string fontDir = Path.GetDirectoryName(_fontFile);
+
+			string name = XVal(fontXml, "name");
+			int size = XInt(fontXml, "size");
+			bool bold = XBool(fontXml, "bold");
+			bool italic = XBool(fontXml, "italic");
+
+			GMGlyph blank = new GMGlyph(0, 0, 0, 0, 0, 0);
+			GMGlyph[] slots = new GMGlyph[256];
+			for (int i = 0; i < 256; i++)
+			{
+				slots[i] = blank;
+			}
+			int first = int.MaxValue;
+			int last = int.MinValue;
+			XElement glyphsEl = fontXml.Element("glyphs");
+			if (glyphsEl != null)
+			{
+				foreach (XElement glyphEl in glyphsEl.Elements("glyph"))
+				{
+					int character = AttrInt(glyphEl, "character");
+					int x = AttrInt(glyphEl, "x");
+					int y = AttrInt(glyphEl, "y");
+					int w = AttrInt(glyphEl, "w");
+					int h = AttrInt(glyphEl, "h");
+					int shift = AttrInt(glyphEl, "shift");
+					int offset = AttrInt(glyphEl, "offset");
+					if (character >= 0 && character < 256)
+					{
+						slots[character] = new GMGlyph(x, y, w, h, shift, offset);
+					}
+					if (character < first) first = character;
+					if (character > last) last = character;
+				}
+			}
+			List<GMGlyph> glyphs = new List<GMGlyph>(slots);
+			if (last < first)
+			{
+				first = 0;
+				last = 0;
+			}
+
+			string imageFile = Path.Combine(fontDir, ToNativePath(XVal(fontXml, "image")));
+			Bitmap bitmap = new Bitmap(imageFile);
+
+			return new GMFont(name, size, bold, italic, first, last, glyphs, bitmap);
 		}
 
 		private static GMObject LoadGMS14Object(XElement _objXml, Dictionary<string, int> _spriteIndex, Dictionary<string, int> _objectIndex)
