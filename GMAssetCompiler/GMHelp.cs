@@ -77,6 +77,24 @@ namespace GMAssetCompiler
 			private set;
 		}
 
+		// Plain-value constructor for non-GM8.1 loaders (e.g. .gmx projects),
+		// which have no equivalent "game help" dialog resource in their XML.
+		public GMHelp()
+		{
+			BackgroundColour = 0;
+			Mimic = true;
+			Caption = string.Empty;
+			Left = 0;
+			Top = 0;
+			Width = 640;
+			Height = 480;
+			Border = true;
+			Sizable = true;
+			OnTop = false;
+			Modal = false;
+			Text = string.Empty;
+		}
+
 		public GMHelp(GMAssets _a, Stream _stream)
 		{
 			int num = _stream.ReadInteger();

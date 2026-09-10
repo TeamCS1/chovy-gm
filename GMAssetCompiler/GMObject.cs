@@ -55,6 +55,23 @@ namespace GMAssetCompiler
 		}
 
 
+		// Plain-value constructor for non-GM8.1 loaders (e.g. .gmx projects).
+		// _events must already be shaped as GM8.1's fixed 12 event-type "slots"
+		// (index = event type, per eKind.cs), each a list of (subevent number,
+		// GMEvent) pairs - the same shape IFFSaver.WriteObjects already expects,
+		// so it needs no changes to consume either source.
+		public GMObject(int _spriteIndex, bool _solid, bool _visible, int _depth, bool _persistent, int _parent, int _mask, IList<IList<KeyValuePair<int, GMEvent>>> _events)
+		{
+			SpriteIndex = _spriteIndex;
+			Solid = _solid;
+			Visible = _visible;
+			Depth = _depth;
+			Persistent = _persistent;
+			Parent = _parent;
+			Mask = _mask;
+			Events = _events;
+		}
+
 		public GMObject(GMAssets _a, Stream _stream)
 		{
 			int num = _stream.ReadInteger();

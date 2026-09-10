@@ -88,6 +88,23 @@ namespace GMAssetCompiler
 			private set;
 		}
 
+		// Plain-value constructor for non-GM8.1 loaders (e.g. .gmx projects).
+		public GMBack(bool _visible, bool _foreground, int _index, int _x, int _y, bool _hTiled, bool _vTiled, int _hSpeed, int _vSpeed, bool _stretch)
+		{
+			Visible = _visible;
+			Foreground = _foreground;
+			Index = _index;
+			X = _x;
+			Y = _y;
+			HTiled = _hTiled;
+			VTiled = _vTiled;
+			HSpeed = _hSpeed;
+			VSpeed = _vSpeed;
+			Blend = 16777215;
+			Alpha = 1.0;
+			Stretch = _stretch;
+		}
+
 		public GMBack(Stream _stream)
 		{
 			Visible = _stream.ReadBoolean();

@@ -168,6 +168,41 @@ namespace GMAssetCompiler
 			set;
 		}
 
+		// Plain constructor for non-GM8.1 loaders (e.g. .gmx projects), where
+		// there is no GMK/exe stream to parse. Version is fixed at 700, NOT
+		// 810/800: IFFSaver.WriteHeader picks the "GEN7"/"GEN8" chunk tag off
+		// this value but writes the exact same header body either way, and
+		// the real PSP runner has only ever been confirmed working against
+		// "GEN7"-tagged content (a real compiled GM8.1 game, neonquest.exe,
+		// carries an embedded Version of 700/701) - a genuinely GM8/8.1-authored
+		// game tagged 800/810 is the one class of input never proven to boot
+		// correctly on this runner (see "What's actually still open" above).
+		internal GMAssets(string _name, int _gameID, Guid _gameGUID)
+		{
+			Magic = 1234321;
+			Version = 700;
+			Debug = false;
+			Name = _name;
+			GameID = _gameID;
+			GameGUID = _gameGUID;
+			Extensions = new List<GMExtension>();
+			Triggers = new List<GMTrigger>();
+			Sounds = new List<KeyValuePair<string, GMSound>>();
+			Sprites = new List<KeyValuePair<string, GMSprite>>();
+			Backgrounds = new List<KeyValuePair<string, GMBackground>>();
+			Paths = new List<KeyValuePair<string, GMPath>>();
+			Scripts = new List<KeyValuePair<string, GMScript>>();
+			Fonts = new List<KeyValuePair<string, GMFont>>();
+			TimeLines = new List<KeyValuePair<string, GMTimeLine>>();
+			Objects = new List<KeyValuePair<string, GMObject>>();
+			Rooms = new List<KeyValuePair<string, GMRoom>>();
+			DataFiles = new List<KeyValuePair<string, GMDataFile>>();
+			Libraries = new List<string>();
+			RoomOrder = new List<int>();
+			Options = new GMOptions();
+			Help = new GMHelp();
+		}
+
 		internal GMAssets(Stream _s, bool _gmk)
 		{
 			Magic = _s.ReadInteger();

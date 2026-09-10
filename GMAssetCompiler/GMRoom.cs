@@ -88,6 +88,25 @@ namespace GMAssetCompiler
 			get;
 			private set;
 		}
+		// Plain-value constructor for non-GM8.1 loaders (e.g. .gmx projects).
+		public GMRoom(string _caption, int _width, int _height, int _speed, bool _persistent, int _colour, bool _showColour, string _code, IList<GMBack> _backgrounds, bool _enableViews, IList<GMView> _views, IList<GMInstance> _instances, IList<GMTile> _tiles)
+		{
+			Caption = _caption;
+			Width = _width;
+			Height = _height;
+			Speed = _speed;
+			Persistent = _persistent;
+			Colour = _colour;
+			ShowColour = _showColour;
+			Code = _code;
+			Backgrounds = _backgrounds;
+			EnableViews = _enableViews;
+			ViewClearScreen = true;
+			Views = _views;
+			Instances = _instances;
+			Tiles = _tiles;
+		}
+
 		public GMRoom(GMAssets _a, Stream _stream)
 		{
 			int num = _stream.ReadInteger();

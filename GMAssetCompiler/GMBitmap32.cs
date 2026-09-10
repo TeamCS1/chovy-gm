@@ -58,6 +58,47 @@ namespace GMAssetCompiler
 			}
 		}
 
+		public GMBitmap32(int _width, int _height, byte[] _data)
+		{
+			Width = _width;
+			Height = _height;
+			Data = _data;
+		}
+
+		// Loads a PNG (or any format System.Drawing can decode) into the same
+		// BGRA-per-pixel byte layout the Stream-based constructor produces, for
+		// use by non-GM8.1 loaders (e.g. GameMaker: Studio 1.4's .gmx projects,
+		// which reference sprite frames as loose image files, not embedded data).
+		public static GMBitmap32 FromFile(string _path)
+		{
+			using (Bitmap source = new Bitmap(_path))
+			using (Bitmap argb = source.PixelFormat == PixelFormat.Format32bppArgb
+				? (Bitmap)source.Clone()
+				: source.Clone(new Rectangle(0, 0, source.Width, source.Height), PixelFormat.Format32bppArgb))
+			{
+				int width = argb.Width;
+				int height = argb.Height;
+				byte[] data = new byte[width * height * 4];
+				Rectangle rect = new Rectangle(0, 0, width, height);
+				BitmapData bitmapData = argb.LockBits(rect, ImageLockMode.ReadOnly, PixelFormat.Format32bppArgb);
+				try
+				{
+					IntPtr scan0 = bitmapData.Scan0;
+					int rowBytes = width * 4;
+					for (int y = 0; y < height; y++)
+					{
+						IntPtr rowPtr = new IntPtr(scan0.ToInt64() + y * bitmapData.Stride);
+						Marshal.Copy(rowPtr, data, y * rowBytes, rowBytes);
+					}
+				}
+				finally
+				{
+					argb.UnlockBits(bitmapData);
+				}
+				return new GMBitmap32(width, height, data);
+			}
+		}
+
 		public GMBitmap32(Stream _s)
 		{
 			switch (_s.ReadInteger())

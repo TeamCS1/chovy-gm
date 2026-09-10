@@ -2,10 +2,13 @@ using System;
 using System.Collections.Generic;
 using System.Drawing;
 using System.Drawing.Imaging;
+using System.Globalization;
 using System.IO;
+using System.Linq;
 using System.Reflection;
 using System.Runtime.InteropServices;
 using System.Text;
+using System.Xml.Linq;
 
 namespace GMAssetCompiler
 {
@@ -24,7 +27,18 @@ namespace GMAssetCompiler
 		{
 			if (_target == ChovyUI.eGMTarget.GameMakerStudio14)
 			{
-				return LoadGMS14Project(_name);
+				GMAssets gms14Assets = LoadGMS14Project(_name);
+				if (gms14Assets != null)
+				{
+					// IFFSaver.WriteHeader derives the in-game name via
+					// Path.GetFileNameWithoutExtension(FileName), which only
+					// strips one extension - a real "<name>.project.gmx" path
+					// would yield "<name>.project", so synthesize a path whose
+					// single extension strips down to the actual project name.
+					string projectDir = Path.GetDirectoryName(Path.GetFullPath(_name));
+					gms14Assets.FileName = Path.Combine(projectDir, gms14Assets.Name + ".gmx");
+				}
+				return gms14Assets;
 			}
 
 			GMAssets gMAssets = null;
@@ -57,8 +71,360 @@ namespace GMAssetCompiler
 		// how to consume unchanged.
 		public static GMAssets LoadGMS14Project(string _projectGmxPath)
 		{
-			Console.WriteLine("GameMaker: Studio 1.4 project loading is not yet implemented: {0}", _projectGmxPath);
-			return null;
+			string projectDir = Path.GetDirectoryName(Path.GetFullPath(_projectGmxPath));
+			XElement root = XDocument.Load(_projectGmxPath).Root;
+
+			string projectName = Path.GetFileName(_projectGmxPath);
+			if (projectName.EndsWith(".project.gmx", StringComparison.OrdinalIgnoreCase))
+			{
+				projectName = projectName.Substring(0, projectName.Length - ".project.gmx".Length);
+			}
+
+			GMAssets assets = new GMAssets(projectName, 0, Guid.NewGuid());
+
+			WarnIfUnsupportedResources(root, "sounds", "sound");
+			WarnIfUnsupportedResources(root, "backgrounds", "background");
+			WarnIfUnsupportedResources(root, "paths", "path");
+
+			Dictionary<string, int> spriteIndex = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
+			XElement spritesEl = root.Element("sprites");
+			if (spritesEl != null)
+			{
+				foreach (XElement spriteRef in spritesEl.Elements("sprite"))
+				{
+					string relPath = spriteRef.Value.Trim();
+					string name = Path.GetFileName(relPath);
+					string spriteFile = Path.Combine(projectDir, ToNativePath(relPath) + ".sprite.gmx");
+					GMSprite sprite = LoadGMS14Sprite(spriteFile);
+					spriteIndex[name] = assets.Sprites.Count;
+					assets.Sprites.Add(new KeyValuePair<string, GMSprite>(name, sprite));
+				}
+			}
+
+			XElement scriptsEl = root.Element("scripts");
+			if (scriptsEl != null)
+			{
+				foreach (XElement scriptRef in scriptsEl.Elements("script"))
+				{
+					string relPath = scriptRef.Value.Trim();
+					string name = Path.GetFileNameWithoutExtension(relPath);
+					string scriptFile = Path.Combine(projectDir, ToNativePath(relPath));
+					string code = File.ReadAllText(scriptFile);
+					assets.Scripts.Add(new KeyValuePair<string, GMScript>(name, new GMScript(code)));
+				}
+			}
+
+			// Objects are read in two passes: names/indices first, then bodies -
+			// so a parentName/objName reference to an object later in the list
+			// (or to itself) still resolves, matching how GM8.1's own indices work.
+			Dictionary<string, int> objectIndex = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
+			List<KeyValuePair<string, XElement>> objectDefs = new List<KeyValuePair<string, XElement>>();
+			XElement objectsEl = root.Element("objects");
+			if (objectsEl != null)
+			{
+				foreach (XElement objRef in objectsEl.Elements("object"))
+				{
+					string relPath = objRef.Value.Trim();
+					string name = Path.GetFileName(relPath);
+					string objFile = Path.Combine(projectDir, ToNativePath(relPath) + ".object.gmx");
+					XElement objXml = XDocument.Load(objFile).Root;
+					objectIndex[name] = objectDefs.Count;
+					objectDefs.Add(new KeyValuePair<string, XElement>(name, objXml));
+				}
+				foreach (KeyValuePair<string, XElement> def in objectDefs)
+				{
+					GMObject obj = LoadGMS14Object(def.Value, spriteIndex, objectIndex);
+					assets.Objects.Add(new KeyValuePair<string, GMObject>(def.Key, obj));
+				}
+			}
+
+			XElement roomsEl = root.Element("rooms");
+			if (roomsEl != null)
+			{
+				foreach (XElement roomRef in roomsEl.Elements("room"))
+				{
+					string relPath = roomRef.Value.Trim();
+					string name = Path.GetFileName(relPath);
+					string roomFile = Path.Combine(projectDir, ToNativePath(relPath) + ".room.gmx");
+					XElement roomXml = XDocument.Load(roomFile).Root;
+					GMRoom room = LoadGMS14Room(roomXml, objectIndex);
+					assets.RoomOrder.Add(assets.Rooms.Count);
+					assets.Rooms.Add(new KeyValuePair<string, GMRoom>(name, room));
+				}
+			}
+
+			return assets;
+		}
+
+		private static string ToNativePath(string _gmxRelativePath)
+		{
+			return _gmxRelativePath.Replace('\\', Path.DirectorySeparatorChar).Replace('/', Path.DirectorySeparatorChar);
+		}
+
+		private static void WarnIfUnsupportedResources(XElement _root, string _listElementName, string _resourceKind)
+		{
+			XElement listEl = _root.Element(_listElementName);
+			if (listEl != null && listEl.Elements().Any())
+			{
+				Console.WriteLine("Warning: this .gmx project has {0} resource(s), which the GameMaker: Studio 1.4 loader does not yet support - they will be skipped.", _resourceKind);
+			}
+		}
+
+		private static GMSprite LoadGMS14Sprite(string _spriteFile)
+		{
+			XElement spriteXml = XDocument.Load(_spriteFile).Root;
+			string spriteDir = Path.GetDirectoryName(_spriteFile);
+
+			int xorig = XInt(spriteXml, "xorig");
+			int yorig = XInt(spriteXml, "yorigin");
+			int bboxLeft = XInt(spriteXml, "bbox_left");
+			int bboxRight = XInt(spriteXml, "bbox_right");
+			int bboxTop = XInt(spriteXml, "bbox_top");
+			int bboxBottom = XInt(spriteXml, "bbox_bottom");
+			int bboxMode = XInt(spriteXml, "bboxmode");
+			int colKind = XInt(spriteXml, "colkind");
+			bool sepMasks = XBool(spriteXml, "sepmasks");
+
+			List<GMBitmap32> images = new List<GMBitmap32>();
+			XElement framesEl = spriteXml.Element("frames");
+			if (framesEl != null)
+			{
+				foreach (XElement frameEl in framesEl.Elements("frame"))
+				{
+					string framePath = Path.Combine(spriteDir, ToNativePath(frameEl.Value.Trim()));
+					images.Add(GMBitmap32.FromFile(framePath));
+				}
+			}
+
+			bool transparent = true;
+			bool colCheck = colKind != 0;
+			return new GMSprite(xorig, yorig, images, bboxLeft, bboxRight, bboxTop, bboxBottom, bboxMode, transparent, false, true, colCheck, sepMasks);
+		}
+
+		private static GMObject LoadGMS14Object(XElement _objXml, Dictionary<string, int> _spriteIndex, Dictionary<string, int> _objectIndex)
+		{
+			string spriteName = XVal(_objXml, "spriteName");
+			int spriteIdx = IsUndefined(spriteName) ? -1 : ResolveIndex(_spriteIndex, spriteName);
+			bool solid = XBool(_objXml, "solid");
+			bool visible = XBool(_objXml, "visible");
+			int depth = XInt(_objXml, "depth");
+			bool persistent = XBool(_objXml, "persistent");
+			string parentName = XVal(_objXml, "parentName");
+			int parentIdx = IsUndefined(parentName) ? -1 : ResolveIndex(_objectIndex, parentName);
+			string maskName = XVal(_objXml, "maskName");
+			int maskIdx = IsUndefined(maskName) ? -1 : ResolveIndex(_spriteIndex, maskName);
+
+			// 12 fixed event-type slots, matching GM8.1's own numbering
+			// (Create=0, Destroy=1, Alarm=2, Step=3, Collision=4, Keyboard=5,
+			// Mouse=6, Other=7, Draw=8, KeyPress=9, KeyRelease=10, Trigger=11).
+			IList<IList<KeyValuePair<int, GMEvent>>> events = new List<IList<KeyValuePair<int, GMEvent>>>();
+			for (int i = 0; i < 12; i++)
+			{
+				events.Add(new List<KeyValuePair<int, GMEvent>>());
+			}
+
+			XElement eventsEl = _objXml.Element("events");
+			if (eventsEl != null)
+			{
+				foreach (XElement eventEl in eventsEl.Elements("event"))
+				{
+					int eventType = AttrInt(eventEl, "eventtype");
+					int subEvent = AttrInt(eventEl, "enumb");
+					// This PSP runner is a GM8.1-era engine and only understands
+					// the single classic Draw event (subevent 0). GMS1.4 added
+					// newer Draw sub-events (64=Draw GUI, 65=Resize, 72/73=Begin/
+					// End, 76/77=Pre/Post) that this runner's per-frame Draw
+					// dispatch has no concept of and never invokes - collapse
+					// all of them down to the classic slot so the GML in a
+					// GMS1.4-authored Draw event (which now defaults to "Draw
+					// GUI" in the IDE, not plain "Draw") actually still runs.
+					if (eventType == 8)
+					{
+						subEvent = 0;
+					}
+					List<GMAction> actions = new List<GMAction>();
+					foreach (XElement actionEl in eventEl.Elements("action"))
+					{
+						actions.Add(LoadGMS14Action(actionEl));
+					}
+					if (eventType >= 0 && eventType < events.Count)
+					{
+						events[eventType].Add(new KeyValuePair<int, GMEvent>(subEvent, new GMEvent(actions)));
+					}
+				}
+			}
+
+			return new GMObject(spriteIdx, solid, visible, depth, persistent, parentIdx, maskIdx, events);
+		}
+
+		// Only plain GML code actions (<kind>7</kind>/<exetype>2</exetype>, the
+		// shape GameMaker: Studio 1.4 emits for a code block dropped into an
+		// event) are supported - drag-and-drop library actions have no GML
+		// source to extract and are out of scope for this loader.
+		private static GMAction LoadGMS14Action(XElement _actionEl)
+		{
+			int id = XInt(_actionEl, "id");
+			string code = string.Empty;
+			XElement argumentsEl = _actionEl.Element("arguments");
+			if (argumentsEl != null)
+			{
+				XElement firstArg = argumentsEl.Elements("argument").FirstOrDefault();
+				if (firstArg != null)
+				{
+					XElement stringEl = firstArg.Element("string");
+					if (stringEl != null)
+					{
+						code = stringEl.Value;
+					}
+				}
+			}
+			return new GMAction(id, code);
+		}
+
+		private static GMRoom LoadGMS14Room(XElement _roomXml, Dictionary<string, int> _objectIndex)
+		{
+			string caption = XVal(_roomXml, "caption");
+			int width = XInt(_roomXml, "width");
+			int height = XInt(_roomXml, "height");
+			int speed = XInt(_roomXml, "speed");
+			bool persistent = XBool(_roomXml, "persistent");
+			int colour = XInt(_roomXml, "colour");
+			bool showColour = XBool(_roomXml, "showcolour");
+			string code = XVal(_roomXml, "code");
+			bool enableViews = XBool(_roomXml, "enableViews");
+
+			List<GMBack> backgrounds = new List<GMBack>();
+			XElement backgroundsEl = _roomXml.Element("backgrounds");
+			if (backgroundsEl != null)
+			{
+				foreach (XElement bgEl in backgroundsEl.Elements("background"))
+				{
+					bool bgVisible = AttrBool(bgEl, "visible");
+					bool bgForeground = AttrBool(bgEl, "foreground");
+					int bgX = AttrInt(bgEl, "x");
+					int bgY = AttrInt(bgEl, "y");
+					bool bgHTiled = AttrBool(bgEl, "htiled");
+					bool bgVTiled = AttrBool(bgEl, "vtiled");
+					int bgHSpeed = AttrInt(bgEl, "hspeed");
+					int bgVSpeed = AttrInt(bgEl, "vspeed");
+					bool bgStretch = AttrBool(bgEl, "stretch");
+					// GMBackground resources aren't loaded by this minimal loader
+					// (see WarnIfUnsupportedResources), so the index is always -1.
+					backgrounds.Add(new GMBack(bgVisible, bgForeground, -1, bgX, bgY, bgHTiled, bgVTiled, bgHSpeed, bgVSpeed, bgStretch));
+				}
+			}
+
+			List<GMView> views = new List<GMView>();
+			XElement viewsEl = _roomXml.Element("views");
+			if (viewsEl != null)
+			{
+				foreach (XElement viewEl in viewsEl.Elements("view"))
+				{
+					bool viewVisible = AttrBool(viewEl, "visible");
+					int xview = AttrInt(viewEl, "xview");
+					int yview = AttrInt(viewEl, "yview");
+					int wview = AttrInt(viewEl, "wview");
+					int hview = AttrInt(viewEl, "hview");
+					int xport = AttrInt(viewEl, "xport");
+					int yport = AttrInt(viewEl, "yport");
+					int wport = AttrInt(viewEl, "wport");
+					int hport = AttrInt(viewEl, "hport");
+					int hborder = AttrInt(viewEl, "hborder");
+					int vborder = AttrInt(viewEl, "vborder");
+					int hspeed = AttrInt(viewEl, "hspeed");
+					int vspeed = AttrInt(viewEl, "vspeed");
+					string objName = AttrVal(viewEl, "objName");
+					int objIdx = IsUndefined(objName) ? -1 : ResolveIndex(_objectIndex, objName);
+					views.Add(new GMView(viewVisible, xview, yview, wview, hview, xport, yport, wport, hport, hborder, vborder, hspeed, vspeed, objIdx));
+				}
+			}
+
+			List<GMInstance> instances = new List<GMInstance>();
+			XElement instancesEl = _roomXml.Element("instances");
+			if (instancesEl != null)
+			{
+				int nextId = 100000;
+				foreach (XElement instEl in instancesEl.Elements("instance"))
+				{
+					int x = AttrInt(instEl, "x");
+					int y = AttrInt(instEl, "y");
+					string objName = AttrVal(instEl, "objName");
+					int objIdx = ResolveIndex(_objectIndex, objName);
+					string instCode = AttrVal(instEl, "code");
+					double scaleX = AttrDouble(instEl, "scaleX", 1.0);
+					double scaleY = AttrDouble(instEl, "scaleY", 1.0);
+					uint colourVal = AttrUInt(instEl, "colour", uint.MaxValue);
+					double rotation = AttrDouble(instEl, "rotation", 0.0);
+					instances.Add(new GMInstance(x, y, objIdx, nextId, instCode, scaleX, scaleY, colourVal, rotation));
+					nextId++;
+				}
+			}
+
+			List<GMTile> tiles = new List<GMTile>();
+
+			return new GMRoom(caption, width, height, speed, persistent, colour, showColour, code, backgrounds, enableViews, views, instances, tiles);
+		}
+
+		private static bool IsUndefined(string _name)
+		{
+			return string.IsNullOrEmpty(_name) || _name == "<undefined>";
+		}
+
+		private static int ResolveIndex(Dictionary<string, int> _map, string _name)
+		{
+			int result;
+			if (_map.TryGetValue(_name, out result))
+			{
+				return result;
+			}
+			Console.WriteLine("Warning: unresolved reference '{0}' in GameMaker: Studio 1.4 project", _name);
+			return -1;
+		}
+
+		private static string XVal(XElement _parent, string _name)
+		{
+			XElement el = _parent.Element(_name);
+			return el != null ? el.Value : string.Empty;
+		}
+
+		private static int XInt(XElement _parent, string _name)
+		{
+			int result;
+			return int.TryParse(XVal(_parent, _name), out result) ? result : 0;
+		}
+
+		private static bool XBool(XElement _parent, string _name)
+		{
+			return XInt(_parent, _name) != 0;
+		}
+
+		private static string AttrVal(XElement _el, string _name)
+		{
+			XAttribute attr = _el.Attribute(_name);
+			return attr != null ? attr.Value : string.Empty;
+		}
+
+		private static int AttrInt(XElement _el, string _name)
+		{
+			int result;
+			return int.TryParse(AttrVal(_el, _name), out result) ? result : 0;
+		}
+
+		private static bool AttrBool(XElement _el, string _name)
+		{
+			return AttrInt(_el, _name) != 0;
+		}
+
+		private static double AttrDouble(XElement _el, string _name, double _default)
+		{
+			double result;
+			return double.TryParse(AttrVal(_el, _name), NumberStyles.Float, CultureInfo.InvariantCulture, out result) ? result : _default;
+		}
+
+		private static uint AttrUInt(XElement _el, string _name, uint _default)
+		{
+			uint result;
+			return uint.TryParse(AttrVal(_el, _name), out result) ? result : _default;
 		}
 
 		private static uint[] InitFastCRC()

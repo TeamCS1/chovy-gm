@@ -117,6 +117,29 @@ namespace GMAssetCompiler
 			private set;
 		}
 
+		// Plain-value constructor for non-GM8.1 loaders (e.g. GameMaker: Studio
+		// 1.4's .gmx projects), which describe sprites as loose PNG frame files
+		// plus XML metadata rather than an embedded/versioned binary blob.
+		public GMSprite(int _xorig, int _yorig, IList<GMBitmap32> _images, int _bboxLeft, int _bboxRight, int _bboxTop, int _bboxBottom, int _bboxMode, bool _transparent, bool _smooth, bool _preload, bool _colCheck, bool _sepMasks)
+		{
+			XOrig = _xorig;
+			YOrig = _yorig;
+			Images = _images;
+			Width = _images.Count > 0 ? _images[0].Width : 0;
+			Height = _images.Count > 0 ? _images[0].Height : 0;
+			BBoxLeft = _bboxLeft;
+			BBoxRight = _bboxRight;
+			BBoxTop = _bboxTop;
+			BBoxBottom = _bboxBottom;
+			BBoxMode = _bboxMode;
+			Transparent = _transparent;
+			Smooth = _smooth;
+			Preload = _preload;
+			ColCheck = _colCheck;
+			SepMasks = _sepMasks;
+			Masks = CreateMask() ?? new List<byte[]>();
+		}
+
 		public GMSprite(GMAssets _a, Stream _s)
 		{
 			int num = _s.ReadInteger();

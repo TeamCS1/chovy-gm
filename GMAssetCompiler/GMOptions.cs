@@ -228,6 +228,49 @@ namespace GMAssetCompiler
 			private set;
 		}
 
+		// Sensible-defaults constructor for non-GM8.1 loaders (e.g. .gmx
+		// projects), whose runtime-relevant option surface for this PSP target
+		// (window/display/error-handling flags) has no direct analogue in the
+		// .gmx project XML worth threading through yet - defaults mirror a
+		// typical GM8.1 "Windowed, no fullscreen, no error dialogs" profile.
+		internal GMOptions()
+		{
+			FullScreen = false;
+			InterpolatePixels = false;
+			NoBorder = false;
+			ShowCursor = true;
+			Scale = 1;
+			Sizeable = false;
+			StayOnTop = false;
+			WindowColour = 0;
+			ChangeResolution = false;
+			ColorDepth = 0;
+			Resolution = 0;
+			Frequency = 0;
+			NoButtons = false;
+			Sync_Vertex = 1;
+			NoScreenSaver = true;
+			ScreenKey = true;
+			HelpKey = false;
+			QuitKey = false;
+			SaveKey = false;
+			ScreenShotKey = false;
+			CloseSec = true;
+			Priority = 0;
+			Freeze = false;
+			ShowProgress = false;
+			LoadTransparent = false;
+			LoadAlpha = 0;
+			ScaleProgress = false;
+			DisplayErrors = false;
+			WriteErrors = false;
+			AbortErrors = false;
+			VariableErrors = false;
+			WebGL = 0;
+			CreationEventOrder = false;
+			Constants = new Dictionary<string, string>();
+		}
+
 		internal GMOptions(GMAssets _a, Stream _s, bool _gmk)
 		{
 			int num = _s.ReadInteger();

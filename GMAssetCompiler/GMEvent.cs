@@ -17,6 +17,14 @@ namespace GMAssetCompiler
 			set;
 		}
 
+		// Plain-value constructor for non-GM8.1 loaders (e.g. .gmx projects),
+		// which already provide a fully-parsed action list rather than a
+		// binary-encoded event stream.
+		public GMEvent(List<GMAction> _actions)
+		{
+			Actions = _actions;
+		}
+
 		public GMEvent(GMAssets _a, Stream _stream)
 		{
 			_stream.ReadInteger();

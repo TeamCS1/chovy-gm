@@ -58,6 +58,20 @@ namespace GMAssetCompiler
 			private set;
 		}
 
+		// Plain-value constructor for non-GM8.1 loaders (e.g. .gmx projects).
+		public GMInstance(int _x, int _y, int _index, int _id, string _code, double _scaleX, double _scaleY, uint _colour, double _rotation)
+		{
+			X = _x;
+			Y = _y;
+			Index = _index;
+			Id = _id;
+			Code = _code;
+			ScaleX = _scaleX;
+			ScaleY = _scaleY;
+			Colour = _colour;
+			Rotation = _rotation;
+		}
+
 		public GMInstance(Stream _stream, int _version)
 		{
 			X = _stream.ReadInteger();

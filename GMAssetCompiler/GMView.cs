@@ -94,6 +94,26 @@ namespace GMAssetCompiler
 			private set;
 		}
 
+		// Plain-value constructor for non-GM8.1 loaders (e.g. .gmx projects).
+		public GMView(bool _visible, int _xView, int _yView, int _wView, int _hView, int _xPort, int _yPort, int _wPort, int _hPort, int _hBorder, int _vBorder, int _hSpeed, int _vSpeed, int _index)
+		{
+			Visible = _visible;
+			XView = _xView;
+			YView = _yView;
+			WView = _wView;
+			HView = _hView;
+			XPort = _xPort;
+			YPort = _yPort;
+			WPort = _wPort;
+			HPort = _hPort;
+			Angle = 0.0;
+			HBorder = _hBorder;
+			VBorder = _vBorder;
+			HSpeed = _hSpeed;
+			VSpeed = _vSpeed;
+			Index = _index;
+		}
+
 		public GMView(Stream _stream)
 		{
 			Visible = _stream.ReadBoolean();
