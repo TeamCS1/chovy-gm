@@ -258,6 +258,7 @@ main.content{min-width:0;}
   font-variant-numeric:tabular-nums;
   white-space:nowrap;
 }
+.category-head .count .patched-count{color:var(--verified-text);}
 .chipgrid{
   display:grid;
   grid-template-columns:repeat(auto-fill, minmax(168px, 1fr));
@@ -292,6 +293,10 @@ main.content{min-width:0;}
   background:var(--verified-soft);
   border-color:var(--verified);
   color:var(--verified-text);
+}
+.chip.patched{
+  border-style:dashed;
+  font-style:italic;
 }
 .chip.copied{
   background:var(--signal-soft);
@@ -417,17 +422,20 @@ main.content{min-width:0;}
   border-radius:4px;
 }
 .status-pill{
+  display:inline-block;
   font-family:var(--mono);
   font-size:0.68rem;
   letter-spacing:0.06em;
   text-transform:uppercase;
-  padding:0.2rem 0.55rem;
+  padding:0.25rem 0.65rem;
   border-radius:99px;
   border:1px solid var(--verified);
+  background:var(--verified-soft);
   color:var(--verified-text);
 }
 .status-pill.pending{
   border-color:var(--signal);
+  background:var(--signal-soft);
   color:var(--signal-text);
 }
 .entry ul{
@@ -507,7 +515,7 @@ footer{
     <input type="text" id="filterInput" placeholder="Filter functions &#8212; try &quot;draw_&quot;, &quot;d3d_&quot;, &quot;ds_grid&quot;&hellip;" autocomplete="off" spellcheck="false">
     <span id="filtercount">1185 of 1185 shown</span>
   </div>
-  <div class="legend"><span class="swatch"></span> Live-tested in PPSSPP against the real registration table (Math, Strings) &#8212; everything else is registration-confirmed or scan-derived but not yet individually run on-device.</div>
+  <div class="legend"><span class="swatch"></span> Live-tested in PPSSPP against the real registration table (Math, Strings) &#8212; everything else is registration-confirmed or scan-derived but not yet individually run on-device. <em>Dashed</em> chips (in Math, Drawing: Sprites &amp; Backgrounds) aren't stock GM8.1 at all &#8212; they're patched into the runner as real native code, GMS1.4-only (see the ledger below), and never counted in the 1,185 GM8.1 total.</div>
 
   <div class="doc">
     <nav class="toc" id="toc" aria-label="Category index"></nav>
@@ -624,6 +632,15 @@ const SUPERGROUPS = [
 // (see the Math live-test section) - not just present in the original .rodata scan.
 const VERIFIED = new Set([...(DATA["Strings"] || []), ...(DATA["Math"] || [])]);
 
+// Functions that don't exist in stock GM8.1 at all - patched into the runner as real
+// native code, GMS1.4-only (see the ledger section below). Shown inline in the category
+// they logically belong to, dashed-bordered so they never get mistaken for a stock GM8.1
+// function, and never counted in a category's or the page's GM8.1 function totals.
+const GMS14_PATCHED = {
+  "Drawing: Sprites & Backgrounds": ["draw_self"],
+  "Math": ["clamp", "lerp", "dot_product"],
+};
+
 function slugify(s){
   return s.toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/(^-|-$)/g,'');
 }
@@ -645,6 +662,7 @@ SUPERGROUPS.forEach(([groupName, cats]) => {
 
   cats.forEach(catName => {
     const fns = DATA[catName] || [];
+    const patched = GMS14_PATCHED[catName] || [];
     totalFns += fns.length;
     const id = slugify(catName);
 
@@ -660,17 +678,21 @@ SUPERGROUPS.forEach(([groupName, cats]) => {
 
     const head = document.createElement('div');
     head.className = 'category-head';
-    head.innerHTML = '<h3>' + catName + '</h3><span class="count">' + fns.length + ' functions</span>';
+    const countLabel = patched.length
+      ? fns.length + ' functions <span class="patched-count">+ ' + patched.length + ' GMS1.4</span>'
+      : fns.length + ' functions';
+    head.innerHTML = '<h3>' + catName + '</h3><span class="count">' + countLabel + '</span>';
     section.appendChild(head);
 
     const grid = document.createElement('div');
     grid.className = 'chipgrid';
-    fns.forEach(fn => {
+
+    function makeChip(fn, extraClass, title) {
       const chip = document.createElement('button');
-      chip.className = VERIFIED.has(fn) ? 'chip verified' : 'chip';
+      chip.className = extraClass ? 'chip ' + extraClass : 'chip';
       chip.type = 'button';
       chip.textContent = fn;
-      chip.title = VERIFIED.has(fn) ? 'Live-tested in PPSSPP - click to copy' : 'Click to copy';
+      chip.title = title;
       chip.addEventListener('click', () => {
         const orig = chip.textContent;
         navigator.clipboard.writeText(fn).catch(()=>{});
@@ -678,8 +700,17 @@ SUPERGROUPS.forEach(([groupName, cats]) => {
         chip.classList.add('copied');
         setTimeout(() => { chip.textContent = orig; chip.classList.remove('copied'); }, 900);
       });
-      grid.appendChild(chip);
+      return chip;
+    }
+
+    fns.forEach(fn => {
+      const verified = VERIFIED.has(fn);
+      grid.appendChild(makeChip(fn, verified ? 'verified' : '', verified ? 'Live-tested in PPSSPP - click to copy' : 'Click to copy'));
     });
+    patched.forEach(fn => {
+      grid.appendChild(makeChip(fn, 'verified patched', 'Not a stock GM8.1 function - patched into the runner as real native code, GMS1.4-only. Confirmed in PPSSPP - click to copy'));
+    });
+
     section.appendChild(grid);
     content.appendChild(section);
   });
