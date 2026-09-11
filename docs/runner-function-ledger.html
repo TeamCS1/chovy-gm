@@ -659,12 +659,12 @@ footer{
   <details class="major-section quirks" open>
     <summary>
       <span class="major-title">Known Runner Quirks</span>
-      <span class="major-count">3 confirmed, not bugs in this toolchain</span>
+      <span class="major-count">4 confirmed, not bugs in this toolchain</span>
     </summary>
 
     <div class="eyebrow">KNOWN RUNNER BEHAVIOR &middot; NOT BUGS IN THIS TOOLCHAIN</div>
-    <h2>Confirmed quirks, found by live-testing Math on real hardware emulation</h2>
-    <p class="scope">All three live in the runner's own math/string implementation, untouched by the <code style="font-family:var(--mono)">draw_self()</code> patch &#8212; they apply identically to <b style="color:var(--text)">both GM8.1 and GMS1.4</b> builds, since both compile against the same underlying function bodies.</p>
+    <h2>Confirmed quirks, found by live-testing on real hardware emulation</h2>
+    <p class="scope">All four live in the runner's own compiler/math/string implementation, untouched by any of the native-code patches above &#8212; they apply identically to <b style="color:var(--text)">both GM8.1 and GMS1.4</b> builds, since both compile against the same underlying runner.</p>
 
     <div class="quirk-item">
       <code>arctan()</code> / <code>arctan2()</code> return radians
@@ -679,6 +679,11 @@ footer{
     <div class="quirk-item">
       <code>random_range()</code> breaks on a zero-width range
       <p><code style="font-family:var(--mono)">random_range(5, 5)</code> measured live returned <code style="font-family:var(--mono)">1072908805</code> &#8212; not close to <code style="font-family:var(--mono)">5</code>, and shaped like a stray IEEE-754 double misread as an integer, consistent with a divide-by-zero-style bug when <code style="font-family:var(--mono)">min == max</code>. <b>Avoid zero-width ranges</b> with this function on either target.</p>
+    </div>
+
+    <div class="quirk-item">
+      <code>var</code> must be declared before any other statement in a code action
+      <p>A <code style="font-family:var(--mono)">var</code> local declared anywhere <em>after</em> other statements in the same code action (the common "declare it right before first use" style) fails on-device with a genuine PSP-side GML compile error &#8212; confirmed via a live PPSSPP breakpoint on the runner's compile-error logger, reading back the actual compiler output: <code style="font-family:var(--mono)">unexpected symbol in expression</code>, positioned exactly at the <code style="font-family:var(--mono)">var</code> keyword. The whole action then fails to compile, and the game silently exits with no visible error &#8212; the same invisible-logger symptom as every other compile failure in this runner. This was originally misdiagnosed as a bug in <code style="font-family:var(--mono)">string_width()</code> specifically (a deep Ghidra investigation fully cleared that function and its whole font/width-lookup subsystem before live debugging found the real cause). <b>Declare every <code style="font-family:var(--mono)">var</code> local at the very top of a script or code action</b>, before any other statement.</p>
     </div>
   </details>
 
