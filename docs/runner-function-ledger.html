@@ -368,17 +368,6 @@ main.content{min-width:0;}
   border-color:var(--verified);
   color:var(--verified-text);
 }
-.chip.pending{
-  background:var(--signal-soft);
-  border-color:var(--signal);
-  color:var(--signal-text);
-  border-style:dashed;
-}
-.chip.pending:hover, .chip.pending:focus-visible{
-  background:var(--signal-soft);
-  border-color:var(--signal);
-  color:var(--signal-text);
-}
 .chip.copied{
   background:var(--signal-soft);
   border-color:var(--signal);
@@ -513,11 +502,6 @@ main.content{min-width:0;}
   background:var(--verified-soft);
   color:var(--verified-text);
 }
-.status-pill.pending{
-  border-color:var(--signal);
-  background:var(--signal-soft);
-  color:var(--signal-text);
-}
 .entry ul{
   margin:0.7rem 0 0;
   padding-left:1.1rem;
@@ -625,7 +609,7 @@ footer{
 
     <div class="legend">
       <span class="swatch"></span> Implemented &amp; confirmed working in PPSSPP
-      <span class="swatch" style="background:var(--signal-soft); border-color:var(--signal); margin-left:0.75rem;"></span> Confirmed missing from this runner, not yet patched in
+      <span class="swatch" style="background:var(--surface); border-color:var(--border); margin-left:0.75rem;"></span> Confirmed missing from this runner, not yet patched in
     </div>
 
     <h4 style="font-family:var(--display); font-weight:700; font-size:1.05rem; color:var(--text); margin:1.5rem 0 0;">Implemented</h4>
@@ -890,7 +874,7 @@ if (pendingGridExisting) {
     const grid = document.createElement('div');
     grid.className = 'chipgrid';
     fns.forEach(fn => {
-      grid.appendChild(makeChip(fn, 'pending', 'Confirmed missing from this runner - not yet patched in'));
+      grid.appendChild(makeChip(fn, '', 'Confirmed missing from this runner - not yet patched in'));
     });
     pendingGridExisting.appendChild(grid);
     if (GMS14_PENDING_NOTES[catName]) {
@@ -913,7 +897,7 @@ if (pendingGridNew) {
     const grid = document.createElement('div');
     grid.className = 'chipgrid';
     fns.forEach(fn => {
-      grid.appendChild(makeChip(fn, 'pending', 'Confirmed missing from this runner - not yet patched in'));
+      grid.appendChild(makeChip(fn, '', 'Confirmed missing from this runner - not yet patched in'));
     });
     pendingGridNew.appendChild(grid);
   });
