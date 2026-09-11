@@ -146,6 +146,62 @@ h1,h2,h3{text-wrap:balance; margin:0;}
   margin-top:0.15rem;
 }
 
+/* ---- Major sections (GameMaker 8.1 / GameMaker: Studio 1.4) ---- */
+.major-section{
+  margin-top:2.5rem;
+  border:1px solid var(--border);
+  border-radius:12px;
+  padding:0 1.5rem 1.5rem;
+  background:var(--surface);
+}
+.major-section > summary{
+  list-style:none;
+  cursor:pointer;
+  display:flex;
+  align-items:baseline;
+  gap:0.85rem;
+  padding:1.25rem 0;
+  margin:0 -1.5rem;
+  padding-left:1.5rem;
+  padding-right:1.5rem;
+  user-select:none;
+}
+.major-section > summary::-webkit-details-marker{display:none;}
+.major-section > summary::before{
+  content:'\25B8';
+  font-size:0.9rem;
+  color:var(--text-muted);
+  transition:transform 0.15s ease;
+  flex-shrink:0;
+}
+.major-section[open] > summary::before{transform:rotate(90deg);}
+.major-section > summary:focus-visible{outline:2px solid var(--accent); outline-offset:2px;}
+.major-title{
+  font-family:var(--display);
+  font-weight:800;
+  font-size:1.6rem;
+  color:var(--text);
+}
+.major-count{
+  font-family:var(--mono);
+  font-size:0.85rem;
+  color:var(--text-muted);
+  font-variant-numeric:tabular-nums;
+}
+.major-section.ledger > summary::before{color:var(--verified-text);}
+
+.patched-grid{margin:1.25rem 0 1.75rem;}
+.patched-grid h4{
+  font-family:var(--display);
+  font-weight:700;
+  font-size:1rem;
+  letter-spacing:0.02em;
+  color:var(--text);
+  margin:1.1rem 0 0.5rem;
+}
+.patched-grid h4:first-child{margin-top:0;}
+.patched-grid .chipgrid{grid-template-columns:repeat(auto-fill, minmax(150px, 1fr));}
+
 /* ---- Filter bar ---- */
 .filterbar{
   margin-top:2.25rem;
@@ -258,7 +314,6 @@ main.content{min-width:0;}
   font-variant-numeric:tabular-nums;
   white-space:nowrap;
 }
-.category-head .count .patched-count{color:var(--verified-text);}
 .chipgrid{
   display:grid;
   grid-template-columns:repeat(auto-fill, minmax(168px, 1fr));
@@ -293,10 +348,6 @@ main.content{min-width:0;}
   background:var(--verified-soft);
   border-color:var(--verified);
   color:var(--verified-text);
-}
-.chip.patched{
-  border-style:dashed;
-  font-style:italic;
 }
 .chip.copied{
   background:var(--signal-soft);
@@ -368,12 +419,11 @@ main.content{min-width:0;}
 }
 .quirk-item p b{color:var(--text); font-weight:500;}
 
-/* ---- GMS1.4 ledger ---- */
+/* ---- GMS1.4 ledger (overrides .major-section's border/background only -
+   padding/margin stay the shared .major-section values so the summary
+   still bleeds edge-to-edge correctly) ---- */
 .ledger{
-  margin-top:3.5rem;
   border:1.5px solid var(--verified);
-  border-radius:10px;
-  padding:1.75rem 1.85rem;
   background:var(--verified-soft);
 }
 .ledger .eyebrow{background:transparent; padding:0; color:var(--verified-text); margin-bottom:0.6rem;}
@@ -511,27 +561,39 @@ footer{
     <div class="stat"><span class="n">PPSSPP-only</span><span class="l">real EBOOTs unaffected</span></div>
   </div>
 
-  <div class="filterbar">
-    <input type="text" id="filterInput" placeholder="Filter functions &#8212; try &quot;draw_&quot;, &quot;d3d_&quot;, &quot;ds_grid&quot;&hellip;" autocomplete="off" spellcheck="false">
-    <span id="filtercount">1185 of 1185 shown</span>
-  </div>
-  <div class="legend"><span class="swatch"></span> Live-tested in PPSSPP against the real registration table (Math, Strings) &#8212; everything else is registration-confirmed or scan-derived but not yet individually run on-device. <em>Dashed</em> chips (in Math, Drawing: Sprites &amp; Backgrounds) aren't stock GM8.1 at all &#8212; they're patched into the runner as real native code, GMS1.4-only (see the ledger below), and never counted in the 1,185 GM8.1 total.</div>
+  <details class="major-section" open>
+    <summary>
+      <span class="major-title">GameMaker 8.1</span>
+      <span class="major-count">1,185 functions supported</span>
+    </summary>
 
-  <div class="doc">
-    <nav class="toc" id="toc" aria-label="Category index"></nav>
-    <main class="content" id="content"></main>
-  </div>
+    <div class="filterbar">
+      <input type="text" id="filterInput" placeholder="Filter functions &#8212; try &quot;draw_&quot;, &quot;d3d_&quot;, &quot;ds_grid&quot;&hellip;" autocomplete="off" spellcheck="false">
+      <span id="filtercount">1185 of 1185 shown</span>
+    </div>
+    <div class="legend"><span class="swatch"></span> Live-tested in PPSSPP against the real registration table (Math, Strings) &#8212; everything else is registration-confirmed or scan-derived but not yet individually run on-device.</div>
 
-  <section class="ledger">
-    <div class="eyebrow">GAMEMAKER: STUDIO 1.4 &middot; ADDED TO THE RUNNER</div>
-    <h2>Reverse-engineered additions</h2>
-    <p>Functions GMS1.4 projects can call that this GM8.1-era runner never shipped, now patched in as real native code &#8212; not a loader-level workaround, actual machine code living inside the runner.</p>
+    <div class="doc">
+      <nav class="toc" id="toc" aria-label="Category index"></nav>
+      <main class="content" id="content"></main>
+    </div>
+  </details>
+
+  <details class="major-section ledger" open>
+    <summary>
+      <span class="major-title">GameMaker: Studio 1.4</span>
+      <span class="major-count">4 functions patched into the runner</span>
+    </summary>
+
+    <p>Functions GMS1.4 projects can call that this GM8.1-era runner never shipped, now patched in as real native code &#8212; not a loader-level workaround, actual machine code living inside the runner. Grouped below by the same category they'd sit in on the GM8.1 side.</p>
 
     <div class="ledger-stats">
       <div><span class="n">4</span><span class="l">native functions patched in</span></div>
       <div><span class="n">confirmed</span><span class="l">working in PPSSPP</span></div>
       <div><span class="n">GMS1.4-only</span><span class="l">activation gate</span></div>
     </div>
+
+    <div class="patched-grid" id="patchedGrid"></div>
 
     <div class="entry">
       <div class="entry-head">
@@ -563,7 +625,7 @@ footer{
     <div class="gate-note">
       <b>Scope limit:</b> this only applies to the opt-in decrypted-EBOOT testing path (PPSSPP only) &#8212; there's no way to re-sign a patched EBOOT without Sony's own keys, so a real distributable ISO build is identical for both targets regardless. <b>Standing constraint:</b> the patched runner is used <b>only</b> when the GMS1.4 build target is selected; the GM8.1 pipeline always keeps shipping the original, unpatched runner.
     </div>
-  </section>
+  </details>
 
   <section class="quirks">
     <div class="eyebrow">KNOWN RUNNER BEHAVIOR &middot; NOT BUGS IN THIS TOOLCHAIN</div>
@@ -649,6 +711,22 @@ const toc = document.getElementById('toc');
 const content = document.getElementById('content');
 let totalFns = 0;
 
+function makeChip(fn, extraClass, title) {
+  const chip = document.createElement('button');
+  chip.className = extraClass ? 'chip ' + extraClass : 'chip';
+  chip.type = 'button';
+  chip.textContent = fn;
+  chip.title = title;
+  chip.addEventListener('click', () => {
+    const orig = chip.textContent;
+    navigator.clipboard.writeText(fn).catch(()=>{});
+    chip.textContent = 'copied ✓';
+    chip.classList.add('copied');
+    setTimeout(() => { chip.textContent = orig; chip.classList.remove('copied'); }, 900);
+  });
+  return chip;
+}
+
 SUPERGROUPS.forEach(([groupName, cats]) => {
   const gh = document.createElement('div');
   gh.className = 'group-label';
@@ -662,7 +740,6 @@ SUPERGROUPS.forEach(([groupName, cats]) => {
 
   cats.forEach(catName => {
     const fns = DATA[catName] || [];
-    const patched = GMS14_PATCHED[catName] || [];
     totalFns += fns.length;
     const id = slugify(catName);
 
@@ -678,43 +755,37 @@ SUPERGROUPS.forEach(([groupName, cats]) => {
 
     const head = document.createElement('div');
     head.className = 'category-head';
-    const countLabel = patched.length
-      ? fns.length + ' functions <span class="patched-count">+ ' + patched.length + ' GMS1.4</span>'
-      : fns.length + ' functions';
-    head.innerHTML = '<h3>' + catName + '</h3><span class="count">' + countLabel + '</span>';
+    head.innerHTML = '<h3>' + catName + '</h3><span class="count">' + fns.length + ' functions</span>';
     section.appendChild(head);
 
     const grid = document.createElement('div');
     grid.className = 'chipgrid';
-
-    function makeChip(fn, extraClass, title) {
-      const chip = document.createElement('button');
-      chip.className = extraClass ? 'chip ' + extraClass : 'chip';
-      chip.type = 'button';
-      chip.textContent = fn;
-      chip.title = title;
-      chip.addEventListener('click', () => {
-        const orig = chip.textContent;
-        navigator.clipboard.writeText(fn).catch(()=>{});
-        chip.textContent = 'copied ✓';
-        chip.classList.add('copied');
-        setTimeout(() => { chip.textContent = orig; chip.classList.remove('copied'); }, 900);
-      });
-      return chip;
-    }
-
     fns.forEach(fn => {
       const verified = VERIFIED.has(fn);
       grid.appendChild(makeChip(fn, verified ? 'verified' : '', verified ? 'Live-tested in PPSSPP - click to copy' : 'Click to copy'));
     });
-    patched.forEach(fn => {
-      grid.appendChild(makeChip(fn, 'verified patched', 'Not a stock GM8.1 function - patched into the runner as real native code, GMS1.4-only. Confirmed in PPSSPP - click to copy'));
-    });
-
     section.appendChild(grid);
     content.appendChild(section);
   });
 });
+
+// GMS1.4-patched quick chip grid, grouped by the category each function
+// logically belongs to - lives entirely inside the GMS1.4 <details> section,
+// never mixed into the GM8.1 grid above.
+const patchedGrid = document.getElementById('patchedGrid');
+if (patchedGrid) {
+  Object.entries(GMS14_PATCHED).forEach(([catName, fns]) => {
+    const h4 = document.createElement('h4');
+    h4.textContent = catName;
+    patchedGrid.appendChild(h4);
+    const grid = document.createElement('div');
+    grid.className = 'chipgrid';
+    fns.forEach(fn => {
+      grid.appendChild(makeChip(fn, 'verified', 'Confirmed working in PPSSPP - click to copy'));
+    });
+    patchedGrid.appendChild(grid);
+  });
+}
 
 document.getElementById('statTotal').textContent = totalFns;
 
