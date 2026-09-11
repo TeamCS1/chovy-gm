@@ -585,7 +585,7 @@ footer{
       <input type="text" id="filterInput" placeholder="Filter functions &#8212; try &quot;draw_&quot;, &quot;d3d_&quot;, &quot;ds_grid&quot;&hellip;" autocomplete="off" spellcheck="false">
       <span id="filtercount">1185 of 1185 shown</span>
     </div>
-    <div class="legend"><span class="swatch"></span> Live-tested in PPSSPP against the real registration table (Math, Strings) &#8212; everything else is registration-confirmed or scan-derived but not yet individually run on-device.</div>
+    <div class="legend"><span class="swatch"></span> Live-tested in PPSSPP against the real registration table (Math, Strings, plus draw_text/draw_set_font/draw_text_ext/draw_text_transformed/draw_set_halign/draw_set_valign/draw_text_color/string_width/string_height) &#8212; everything else is registration-confirmed or scan-derived but not yet individually run on-device.</div>
 
     <div class="doc">
       <nav class="toc" id="toc" aria-label="Category index"></nav>
@@ -731,7 +731,14 @@ const SUPERGROUPS = [
 
 // Live-tested against the real FUN_000045bc registration table AND run on-device in PPSSPP
 // (see the Math live-test section) - not just present in the original .rodata scan.
-const VERIFIED = new Set([...(DATA["Strings"] || []), ...(DATA["Math"] || [])]);
+// Live-tested individually on-device in PPSSPP against GMS1.4 builds: draw_text/
+// draw_set_font (full alphabet, digits, and case verified character-by-character
+// during the font glyph-mapping investigation) and draw_text_ext, draw_text_transformed,
+// draw_set_halign/draw_set_valign, draw_text_color, string_width, string_height
+// (the Drawing: Text & Fonts sweep - also where the var-mid-action compile quirk,
+// not a bug in any of these, was found and documented under Known Runner Quirks).
+const VERIFIED_TEXT_FUNCTIONS = ["draw_text", "draw_set_font", "draw_text_ext", "draw_text_transformed", "draw_set_halign", "draw_set_valign", "draw_text_color", "string_width", "string_height"];
+const VERIFIED = new Set([...(DATA["Strings"] || []), ...(DATA["Math"] || []), ...VERIFIED_TEXT_FUNCTIONS]);
 
 // Functions that don't exist in stock GM8.1 at all - patched into the runner as real
 // native code, GMS1.4-only (see the ledger section below). Shown inline in the category
