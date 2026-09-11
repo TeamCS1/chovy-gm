@@ -126,7 +126,7 @@ namespace GMAssetCompiler
 			"joystick_vpos", "joystick_xpos", "joystick_ypos", "joystick_zpos", "keyboard_check", "keyboard_check_direct",
 			"keyboard_check_pressed", "keyboard_check_released", "keyboard_clear", "keyboard_get_map", "keyboard_get_numlock", "keyboard_key_press",
 			"keyboard_key_release", "keyboard_set_map", "keyboard_set_numlock", "keyboard_unset_map", "keyboard_wait", "lengthdir_x",
-			"lengthdir_y", "log10", "log2", "logn", "make_color",
+			"lengthdir_y", "ln", "log10", "log2", "logn", "make_color",
 			"make_color_hsv", "make_color_rgb", "max", "max3", "mean", "median",
 			"merge_color",
 			"min", "min3", "motion_add", "motion_set", "mouse_check_button", "mouse_check_button_pressed",
