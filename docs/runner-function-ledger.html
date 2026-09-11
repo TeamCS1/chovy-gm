@@ -664,6 +664,21 @@ footer{
       </ul>
     </div>
 
+    <div class="entry">
+      <div class="entry-head">
+        <code>color_get_hue() / color_get_saturation() / color_get_value()</code>
+        <span class="status-pill">Fixed &middot; confirmed in PPSSPP</span>
+      </div>
+      <ul>
+        <li><b>All three were broken, and for the same reason.</b> They share one RGB-to-HSV routine (<code style="font-family:var(--mono)">FUN_000bf1e8</code>), which returned a flat <code style="font-family:var(--mono)">0</code> for hue, saturation <em>and</em> value on any input &#8212; originally mistaken for a saturation-only fault because pure red's minimum channel happens to be <code style="font-family:var(--mono)">0</code> too.</li>
+        <li><b>Root cause 1 &#8212; it computed the minimum twice and the maximum never.</b> The routine holds two consecutive, textually <em>identical</em> three-way comparison blocks. The first correctly finds <code style="font-family:var(--mono)">min(R,G,B)</code>; the second is the same code again, but everything downstream treats its result as the <em>maximum</em> (<code style="font-family:var(--mono)">delta = max - min</code>, <code style="font-family:var(--mono)">saturation = delta / max</code>, <code style="font-family:var(--mono)">value = max &times; 255</code>). With both computing the minimum, <code style="font-family:var(--mono)">delta</code> is always exactly zero, collapsing hue and saturation to <code style="font-family:var(--mono)">0</code> and making value report the darkest channel instead of the brightest. Fixed by swapping the operands of that block's three float comparisons, turning each min-select into a max-select.</li>
+        <li><b>Root cause 2 &#8212; saturation was scaled by 2550 instead of 255.</b> The result is written with a <em>byte</em> store, so full saturation wrapped to <code style="font-family:var(--mono)">2550 &amp; 0xFF = 246</code> and mid-range values wrapped to nonsense. Hue and value used the correct scales; only saturation carried the stray factor of ten. Fixed by correcting the constant.</li>
+        <li><b>Five words changed, nothing moved</b> &#8212; both fixes are in-place word edits with identical instruction counts, so no free memory or hook redirection was needed (<code style="font-family:var(--mono)">tools/runner_patch/patch_hsv_minmax_fix.py</code>). An earlier conservative workaround that only redirected which value got returned is reverted by the same script.</li>
+        <li class="missing"><b>Static analysis was wrong three times here; live debugging settled it.</b> The decompiler attributed the HSV math to the wrong function entirely (raw disassembly showed a 14-instruction byte-repacker), one patch attempt crashed the runner outright, and another regressed a passing test by "fixing" a Red/Blue byte swap that was deliberate and correct all along. What finally identified the bug was a live PPSSPP breakpoint proving a <em>well-formed</em> input still produced <code style="font-family:var(--mono)">0</code> &#8212; see CLAUDE.md for the full trail.</li>
+        <li><b>Tested</b> &#8212; a 15-colour round-trip battery (<code style="font-family:var(--mono)">make_color_hsv</code> &rarr; all three getters, &plusmn;4 tolerance for 8-bit quantisation) passed <b>45/45</b> live in PPSSPP: all six hue sectors, two mid-sector hues, dark / half-saturated / muted variants, plus the two degenerate cases (a desaturated grey and a zero-value black, both correctly reporting hue and saturation as <code style="font-family:var(--mono)">0</code>).</li>
+      </ul>
+    </div>
+
     <div class="gate-note">
       <b>Scope limit:</b> this only applies to the opt-in decrypted-EBOOT testing path (PPSSPP only) &#8212; there's no way to re-sign a patched EBOOT without Sony's own keys, so a real distributable ISO build is identical for both targets regardless. <b>Standing constraint:</b> the patched runner is used <b>only</b> when the GMS1.4 build target is selected; the GM8.1 pipeline always keeps shipping the original, unpatched runner.
     </div>
@@ -672,12 +687,12 @@ footer{
   <details class="major-section quirks" open>
     <summary>
       <span class="major-title">Known Runner Quirks</span>
-      <span class="major-count">6 confirmed, not bugs in this toolchain</span>
+      <span class="major-count">5 confirmed, not bugs in this toolchain</span>
     </summary>
 
     <div class="eyebrow">KNOWN RUNNER BEHAVIOR &middot; NOT BUGS IN THIS TOOLCHAIN</div>
     <h2>Confirmed quirks, found by live-testing on real hardware emulation</h2>
-    <p class="scope">All six live in the runner's own compiler/math/string/graphics implementation, untouched by any of the native-code patches above &#8212; they apply identically to <b style="color:var(--text)">both GM8.1 and GMS1.4</b> builds, since both compile against the same underlying runner.</p>
+    <p class="scope">All five live in the runner's own compiler/math/string/graphics implementation, untouched by any of the native-code patches above &#8212; they apply identically to <b style="color:var(--text)">both GM8.1 and GMS1.4</b> builds, since both compile against the same underlying runner.</p>
 
     <div class="quirk-item">
       <code>arctan()</code> / <code>arctan2()</code> return radians
@@ -697,11 +712,6 @@ footer{
     <div class="quirk-item">
       <code>var</code> must be declared before any other statement in a code action
       <p>A <code style="font-family:var(--mono)">var</code> local declared anywhere <em>after</em> other statements in the same code action (the common "declare it right before first use" style) fails on-device with a genuine PSP-side GML compile error &#8212; confirmed via a live PPSSPP breakpoint on the runner's compile-error logger, reading back the actual compiler output: <code style="font-family:var(--mono)">unexpected symbol in expression</code>, positioned exactly at the <code style="font-family:var(--mono)">var</code> keyword. The whole action then fails to compile, and the game silently exits with no visible error &#8212; the same invisible-logger symptom as every other compile failure in this runner. This was originally misdiagnosed as a bug in <code style="font-family:var(--mono)">string_width()</code> specifically (a deep Ghidra investigation fully cleared that function and its whole font/width-lookup subsystem before live debugging found the real cause). <b>Declare every <code style="font-family:var(--mono)">var</code> local at the very top of a script or code action</b>, before any other statement.</p>
-    </div>
-
-    <div class="quirk-item">
-      <code>color_get_saturation()</code> always returns 0
-      <p>Confirmed via a runner patch attempt and live PPSSPP register debugging (not just static analysis): this function shares its underlying HSV conversion with <code style="font-family:var(--mono)">color_get_hue()</code>/<code style="font-family:var(--mono)">color_get_value()</code>, and that conversion (<code style="font-family:var(--mono)">FUN_000bf1e8</code>) has a confirmed bug of its own beyond the Red/Blue swap fixed above &#8212; live-traced with a correctly-formed input, it returns a flat <code style="font-family:var(--mono)">0</code> for hue, saturation, <em>and</em> value alike. A runner patch (<code style="font-family:var(--mono)">tools/runner_patch/patch_hsv_conservative_fix.py</code>) recovers correct <code style="font-family:var(--mono)">color_get_hue()</code>/<code style="font-family:var(--mono)">color_get_value()</code> results for the specific case tested (pure red) by redirecting which intermediate value gets returned, but saturation still comes back wrong, and hue/value's correctness for <em>other</em> hues hasn't been verified &#8212; the deeper bug wasn't safe to guess at further via static reading given how many times this exact function chain already contradicted careful hand-analysis (see CLAUDE.md's full writeup). <b>Don't rely on <code style="font-family:var(--mono)">color_get_saturation()</code></b>, and treat <code style="font-family:var(--mono)">color_get_hue()</code>/<code style="font-family:var(--mono)">color_get_value()</code> as verified only for hues at or near pure red until tested further.</p>
     </div>
 
     <div class="quirk-item">
@@ -761,16 +771,14 @@ const SUPERGROUPS = [
 // (the Drawing: Text & Fonts sweep - also where the var-mid-action compile quirk,
 // not a bug in any of these, was found and documented under Known Runner Quirks).
 const VERIFIED_TEXT_FUNCTIONS = ["draw_text", "draw_set_font", "draw_text_ext", "draw_text_transformed", "draw_set_halign", "draw_set_valign", "draw_text_color", "string_width", "string_height"];
-// Confirmed working live in PPSSPP by the Drawing: Color & Blending sweep - draw_getpixel,
-// color_get_saturation, and color_get_value are deliberately excluded (all three confirmed
-// broken; see the ledger's Known Runner Quirks section and CLAUDE.md's Red/Blue swap writeup).
-// color_get_saturation is deliberately excluded - confirmed broken (always returns
-// 0) via a runner patch attempt and live PPSSPP register debugging; see CLAUDE.md's
-// "PARTIALLY RESOLVED" writeup and the Known Runner Quirks section below. hue/value
-// are verified only for the specific pure-red test case actually run - correctness
-// for other hues is unverified given the underlying HSV conversion's confirmed
-// deeper bug (FUN_000bf1e8 returns 0 for at least one well-formed input).
-const VERIFIED_COLOR_FUNCTIONS = ["draw_set_color", "draw_get_color", "draw_set_alpha", "draw_get_alpha", "make_color", "make_color_rgb", "make_color_hsv", "merge_color", "color_get_red", "color_get_green", "color_get_blue", "color_get_hue", "color_get_value", "draw_set_blend_mode", "draw_set_blend_mode_ext"];
+// Confirmed working live in PPSSPP by the Drawing: Color & Blending sweep. The three
+// color_get_hue/saturation/value entries earned their place the hard way: all three were
+// broken by two real bugs in the runner's shared RGB-to-HSV routine, both since fixed
+// (see the "Fixed" entry above and CLAUDE.md's full writeup), and all three now pass a
+// 15-colour round-trip battery 45/45 - every hue sector, mixed saturation/value, and the
+// degenerate grey and black cases. draw_getpixel remains excluded: it is a never-implemented
+// stub, not a bug, and stays under Known Runner Quirks.
+const VERIFIED_COLOR_FUNCTIONS = ["draw_set_color", "draw_get_color", "draw_set_alpha", "draw_get_alpha", "make_color", "make_color_rgb", "make_color_hsv", "merge_color", "color_get_red", "color_get_green", "color_get_blue", "color_get_hue", "color_get_saturation", "color_get_value", "draw_set_blend_mode", "draw_set_blend_mode_ext"];
 const VERIFIED = new Set([...(DATA["Strings"] || []), ...(DATA["Math"] || []), ...VERIFIED_TEXT_FUNCTIONS, ...VERIFIED_COLOR_FUNCTIONS]);
 
 // Functions that don't exist in stock GM8.1 at all - patched into the runner as real
