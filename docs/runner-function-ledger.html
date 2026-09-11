@@ -1,3 +1,4 @@
+<meta charset="utf-8">
 <title>Runner Function Ledger</title>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@600;700;800&family=IBM+Plex+Sans:wght@400;500;600&family=Martian+Mono:wght@400;500;600&display=swap">
 <style>
@@ -201,6 +202,24 @@ h1,h2,h3{text-wrap:balance; margin:0;}
 }
 .patched-grid h4:first-child{margin-top:0;}
 .patched-grid .chipgrid{grid-template-columns:repeat(auto-fill, minmax(150px, 1fr));}
+.patched-grid .cat-note{
+  margin:0.4rem 0 0;
+  font-size:0.8rem;
+  font-style:italic;
+  color:var(--text-muted);
+  max-width:70ch;
+}
+.pending-supergroup-head{
+  font-family:var(--mono);
+  font-size:0.7rem;
+  letter-spacing:0.12em;
+  text-transform:uppercase;
+  color:var(--signal-text);
+  margin:2rem 0 0.75rem;
+  padding-bottom:0.4rem;
+  border-bottom:1px solid var(--border);
+}
+.pending-supergroup-head:first-child{margin-top:0;}
 
 /* ---- Filter bar ---- */
 .filterbar{
@@ -349,6 +368,17 @@ main.content{min-width:0;}
   border-color:var(--verified);
   color:var(--verified-text);
 }
+.chip.pending{
+  background:var(--signal-soft);
+  border-color:var(--signal);
+  color:var(--signal-text);
+  border-style:dashed;
+}
+.chip.pending:hover, .chip.pending:focus-visible{
+  background:var(--signal-soft);
+  border-color:var(--signal);
+  color:var(--signal-text);
+}
 .chip.copied{
   background:var(--signal-soft);
   border-color:var(--signal);
@@ -375,19 +405,19 @@ main.content{min-width:0;}
   flex-shrink:0;
 }
 
-/* ---- Quirks callout ---- */
-.quirks{
-  margin-top:2.5rem;
-  border:1px solid var(--signal);
-  border-radius:10px;
-  padding:1.5rem 1.75rem;
+/* ---- Quirks callout (overrides .major-section's border only, same
+   pattern as .ledger - padding/margin stay the shared major-section
+   values so the summary still bleeds edge-to-edge correctly) ---- */
+.major-section.quirks{
+  border:1.5px solid var(--signal);
   background:var(--surface);
 }
+.major-section.quirks > summary::before{color:var(--signal-text);}
 .quirks .eyebrow{background:var(--signal-soft); color:var(--signal-text); margin-bottom:0.6rem;}
 .quirks h2{
   font-family:var(--display);
   font-weight:800;
-  font-size:1.5rem;
+  font-size:1.3rem;
   color:var(--text);
 }
 .quirks p.scope{
@@ -558,7 +588,7 @@ footer{
     <div class="stat"><span class="n" id="statTotal">1185</span><span class="l">GM8.1 functions supported</span></div>
     <div class="stat"><span class="n">25</span><span class="l">categories, 6 groups</span></div>
     <div class="stat"><span class="n" style="color:var(--verified-text)">4</span><span class="l">GMS1.4 functions patched in</span></div>
-    <div class="stat"><span class="n">PPSSPP-only</span><span class="l">real EBOOTs unaffected</span></div>
+    <div class="stat"><span class="n" style="color:var(--signal-text)" id="statPending">&#8212;</span><span class="l">GMS1.4 functions confirmed missing</span></div>
   </div>
 
   <details class="major-section" open>
@@ -582,18 +612,33 @@ footer{
   <details class="major-section ledger" open>
     <summary>
       <span class="major-title">GameMaker: Studio 1.4</span>
-      <span class="major-count">4 functions patched into the runner</span>
+      <span class="major-count" id="gms14MajorCount">4 patched in</span>
     </summary>
 
-    <p>Functions GMS1.4 projects can call that this GM8.1-era runner never shipped, now patched in as real native code &#8212; not a loader-level workaround, actual machine code living inside the runner. Grouped below by the same category they'd sit in on the GM8.1 side.</p>
+    <p>Functions GMS1.4 projects can call that this GM8.1-era runner never shipped, now patched in as real native code &#8212; not a loader-level workaround, actual machine code living inside the runner. Below: what's done, what's confirmed missing but not yet implemented (sourced against the real <a href="https://www.hitscan.org/dadiospice/" style="color:inherit">GameMaker: Studio 1.4 manual archive</a>, not guessed), grouped the same way as the GM8.1 section above &#8212; by category, and by whether a GM8.1 category applies at all.</p>
 
     <div class="ledger-stats">
       <div><span class="n">4</span><span class="l">native functions patched in</span></div>
-      <div><span class="n">confirmed</span><span class="l">working in PPSSPP</span></div>
+      <div><span class="n" id="ledgerPendingCount" style="color:var(--signal-text)">&#8212;</span><span class="l">confirmed missing, not yet implemented</span></div>
       <div><span class="n">GMS1.4-only</span><span class="l">activation gate</span></div>
     </div>
 
+    <div class="legend">
+      <span class="swatch"></span> Implemented &amp; confirmed working in PPSSPP
+      <span class="swatch" style="background:var(--signal-soft); border-color:var(--signal); margin-left:0.75rem;"></span> Confirmed missing from this runner, not yet patched in
+    </div>
+
+    <h4 style="font-family:var(--display); font-weight:700; font-size:1.05rem; color:var(--text); margin:1.5rem 0 0;">Implemented</h4>
     <div class="patched-grid" id="patchedGrid"></div>
+
+    <h4 style="font-family:var(--display); font-weight:700; font-size:1.05rem; color:var(--text); margin:0.5rem 0 0;">Confirmed missing &#8212; grouped by GM8.1 category</h4>
+    <div class="patched-grid" id="pendingGridExisting"></div>
+
+    <h4 style="font-family:var(--display); font-weight:700; font-size:1.05rem; color:var(--text); margin:0.5rem 0 0;">Confirmed missing &#8212; entire feature areas GM8.1 never had</h4>
+    <p style="color:var(--text-muted); font-size:0.88rem; margin:0.3rem 0 0; max-width:70ch;">These have no GM8.1 category to sit under at all &#8212; Box2D physics, the buffer/vertex-buffer APIs, shaders, gamepad input, and the platform-integration surfaces (Steam, Facebook, achievements) all arrived after this runner's era.</p>
+    <div class="patched-grid" id="pendingGridNew"></div>
+
+    <p style="color:var(--text-muted); font-size:0.82rem; margin-top:1rem; max-width:70ch;"><b style="color:var(--text); font-weight:500;">Deliberately excluded:</b> <code style="font-family:var(--mono)">json_encode</code>/<code style="font-family:var(--mono)">json_decode</code> and the <code style="font-family:var(--mono)">gpu_set_*</code>/<code style="font-family:var(--mono)">gpu_get_*</code> blend/filter controls &#8212; neither could be confirmed present in the GMS1.4-era manual specifically (both read as later, 1.99/2.0-era additions), so they're left off rather than guessed. Also excluded: HTML5/Windows&nbsp;8/Windows&nbsp;Phone-specific functions and advertising/IAP/push-notification/cloud-save APIs, none of which are reachable on a PSP target regardless of runner support.</p>
 
     <div class="entry">
       <div class="entry-head">
@@ -627,7 +672,12 @@ footer{
     </div>
   </details>
 
-  <section class="quirks">
+  <details class="major-section quirks" open>
+    <summary>
+      <span class="major-title">Known Runner Quirks</span>
+      <span class="major-count">3 confirmed, not bugs in this toolchain</span>
+    </summary>
+
     <div class="eyebrow">KNOWN RUNNER BEHAVIOR &middot; NOT BUGS IN THIS TOOLCHAIN</div>
     <h2>Confirmed quirks, found by live-testing Math on real hardware emulation</h2>
     <p class="scope">All three live in the runner's own math/string implementation, untouched by the <code style="font-family:var(--mono)">draw_self()</code> patch &#8212; they apply identically to <b style="color:var(--text)">both GM8.1 and GMS1.4</b> builds, since both compile against the same underlying function bodies.</p>
@@ -646,7 +696,7 @@ footer{
       <code>random_range()</code> breaks on a zero-width range
       <p><code style="font-family:var(--mono)">random_range(5, 5)</code> measured live returned <code style="font-family:var(--mono)">1072908805</code> &#8212; not close to <code style="font-family:var(--mono)">5</code>, and shaped like a stray IEEE-754 double misread as an integer, consistent with a divide-by-zero-style bug when <code style="font-family:var(--mono)">min == max</code>. <b>Avoid zero-width ranges</b> with this function on either target.</p>
     </div>
-  </section>
+  </details>
 
   <footer>Compiled from a full static extraction of the runner's supported-function table &#8212; see chovy-gm/GMAssetCompiler/RunnerSupportedFunctions.cs for the raw list this page renders.</footer>
 
@@ -702,6 +752,47 @@ const GMS14_PATCHED = {
   "Drawing: Sprites & Backgrounds": ["draw_self"],
   "Math": ["clamp", "lerp", "dot_product"],
 };
+
+// Functions confirmed absent from this runner via the real GameMaker: Studio 1.4
+// manual archive (hitscan.org/dadiospice) but not yet patched in - grouped under
+// the GM8.1 category they'd logically belong to. Never counted in that category's
+// GM8.1 total above; rendered only inside the GMS1.4 section as dashed amber chips.
+const GMS14_PENDING = {
+  "Math": ["dot_product_normalised", "dot_product_3d", "dot_product_3d_normalised", "angle_difference", "point_distance_3d"],
+  "Drawing: Color & Blending": ["draw_getpixel_ext", "draw_set_colour_write_enable", "draw_set_alpha_test", "draw_set_alpha_test_ref_value", "draw_get_alpha_test", "draw_get_alpha_test_ref_value", "draw_enable_alphablend"],
+  "Drawing: Surfaces & Textures": ["background_get_uvs", "sprite_get_uvs", "font_get_texture", "font_get_uvs", "texture_get_texel_width", "texture_get_texel_height", "texture_set_stage", "texture_set_interpolation_ext", "texture_set_repeat_ext"],
+  "Input: Keyboard, Mouse & Joystick": ["cursor_sprite"],
+  "Instances": ["alarm_set", "alarm_get"],
+  "External DLLs & Misc System": ["game_load_buffer", "game_save_buffer", "gml_release_mode", "gml_pragma", "game_id", "game_save_id", "game_display_name", "game_project_name", "GM_build_date", "GM_version"],
+};
+
+// A short note attached under one category's pending chips instead of enumerating
+// every item - used where the gap is a whole naming convention (British spelling
+// aliases), not a fixed list of individually-interesting new functions.
+const GMS14_PENDING_NOTES = {
+  "Drawing: Color & Blending": "GMS1.4 also adds British-spelling colour_* aliases throughout this category (colour_get_blue, colour_get_green, colour_get_red, colour_get_hue, colour_get_saturation, colour_get_value, draw_set_colour, make_colour_hsv, make_colour_rgb, merge_colour) alongside the American spellings already listed under GM8.1 above - not enumerated as separate chips here.",
+};
+
+// Entire feature areas this GM8.1-era runner has no category for at all - confirmed
+// via the same manual, real function names throughout. None are implemented; every
+// chip here is pending. Physics is split into three pages the same way the real
+// manual splits it, since ~97 functions in one grid would be unreadable.
+const GMS14_NEW_CATEGORIES = [
+  ["Buffers", ["buffer_create","buffer_create_from_vertex_buffer","buffer_create_from_vertex_buffer_ext","buffer_delete","buffer_read","buffer_write","buffer_fill","buffer_seek","buffer_tell","buffer_peek","buffer_poke","buffer_save","buffer_save_ext","buffer_save_async","buffer_load","buffer_load_ext","buffer_load_async","buffer_async_group_begin","buffer_async_group_option","buffer_async_group_end","buffer_copy","buffer_copy_from_vertex_buffer","buffer_get_type","buffer_get_alignment","buffer_get_address","buffer_get_size","buffer_get_surface","buffer_set_surface","buffer_resize","buffer_sizeof","buffer_md5","buffer_sha1","buffer_base64_encode","buffer_base64_decode","buffer_base64_decode_ext"]],
+  ["Physics: World, Forces & Debug", ["physics_world_create","physics_world_gravity","physics_world_update_iterations","physics_world_update_speed","physics_world_draw_debug","physics_draw_debug","physics_pause_enable","physics_apply_force","physics_apply_impulse","physics_apply_local_force","physics_apply_local_impulse","physics_apply_torque","physics_apply_angular_impulse","physics_test_overlap","physics_mass_properties"]],
+  ["Physics: Fixtures & Joints", ["physics_fixture_create","physics_fixture_bind","physics_fixture_bind_ext","physics_fixture_set_collision_group","physics_fixture_delete","physics_remove_fixture","physics_fixture_set_box_shape","physics_fixture_set_circle_shape","physics_fixture_set_edge_shape","physics_fixture_set_chain_shape","physics_fixture_set_polygon_shape","physics_fixture_add_point","physics_fixture_set_density","physics_fixture_set_friction","physics_fixture_set_linear_damping","physics_fixture_set_angular_damping","physics_fixture_set_restitution","physics_fixture_set_sensor","physics_fixture_set_kinematic","physics_fixture_set_awake","physics_get_friction","physics_get_density","physics_get_restitution","physics_set_friction","physics_set_density","physics_set_restitution","physics_joint_distance_create","physics_joint_revolute_create","physics_joint_prismatic_create","physics_joint_pulley_create","physics_joint_gear_create","physics_joint_rope_create","physics_joint_wheel_create","physics_joint_weld_create","physics_joint_friction_create","physics_joint_delete","physics_joint_enable_motor","physics_joint_get_value","physics_joint_set_value"]],
+  ["Physics: Soft-Body Particles", ["physics_particle_count","physics_particle_group_count","physics_particle_set_max_count","physics_particle_set_radius","physics_particle_set_density","physics_particle_set_damping","physics_particle_set_gravity_scale","physics_particle_get_max_count","physics_particle_get_radius","physics_particle_get_density","physics_particle_get_damping","physics_particle_get_gravity_scale","physics_particle_set_flags","physics_particle_set_category_flags","physics_particle_set_group_flags","physics_particle_get_group_flags","physics_particle_group_get_inertia","physics_particle_group_get_centre_x","physics_particle_group_get_centre_y","physics_particle_group_get_vel_x","physics_particle_group_get_vel_y","physics_particle_group_get_ang_vel","physics_particle_group_get_x","physics_particle_group_get_y","physics_particle_group_get_angle","physics_particle_get_data","physics_particle_get_data_particle","physics_particle_group_get_data","physics_particle_create","physics_particle_group_begin","physics_particle_group_circle","physics_particle_group_box","physics_particle_group_polygon","physics_particle_group_add_point","physics_particle_group_end","physics_particle_group_join","physics_particle_group_delete","physics_particle_delete","physics_particle_delete_region_circle","physics_particle_delete_region_box","physics_particle_delete_region_poly","physics_particle_draw","physics_particle_draw_ext"]],
+  ["Shaders", ["shader_set","shader_get_uniform","shader_get_sampler_index","shader_set_uniform_f","shader_set_uniform_f_array","shader_set_uniform_i","shader_set_uniform_i_array","shader_set_uniform_matrix","shader_set_uniform_matrix_array","shader_reset","shader_is_compiled","shaders_are_supported","shader_current","shader_enable_corner_id"]],
+  ["Vertex Buffers & Primitive Building", ["vertex_format_begin","vertex_format_add_colour","vertex_format_add_position","vertex_format_add_position_3d","vertex_format_add_textcoord","vertex_format_add_normal","vertex_format_add_custom","vertex_format_end","vertex_format_delete","vertex_create_buffer","vertex_create_buffer_ext","vertex_create_buffer_from_buffer","vertex_create_buffer_from_buffer_ext","vertex_get_buffer_size","vertex_get_number","vertex_delete_buffer","vertex_begin","vertex_colour","vertex_normal","vertex_position","vertex_position_3d","vertex_argb","vertex_texcoord","vertex_float1","vertex_float2","vertex_float3","vertex_float4","vertex_ubyte4","vertex_end","vertex_freeze","vertex_submit"]],
+  ["Gamepad Input", ["gamepad_is_supported","gamepad_get_device_count","gamepad_is_connected","gamepad_get_description","gamepad_get_button_threshold","gamepad_set_button_threshold","gamepad_axis_count","gamepad_axis_value","gamepad_button_check","gamepad_button_check_pressed","gamepad_button_check_released","gamepad_button_count","gamepad_button_value","gamepad_set_vibration","gamepad_set_axis_deadzone","gamepad_set_colour"]],
+  ["Device Input", ["device_mouse_check_button","device_mouse_check_button_pressed","device_mouse_check_button_released","device_mouse_dbclick_enable","device_mouse_x","device_mouse_y","device_mouse_raw_x","device_mouse_raw_y","device_mouse_x_to_gui","device_mouse_y_to_gui","device_is_keypad_open","device_get_tilt_x","device_get_tilt_y","device_get_tilt_z"]],
+  ["Immersion Haptics", ["immersion_play_effect", "immersion_stop"]],
+  ["Networking", ["network_create_server","network_create_server_raw","network_create_socket","network_create_socket_ext","network_connect","network_connect_raw","network_resolve","network_set_config","network_set_timeout","network_send_broadcast","network_send_packet","network_send_raw","network_send_udp","network_send_udp_raw","network_destroy"]],
+  ["Operating System", ["os_browser","os_device","os_type","os_version","os_is_paused","os_is_network_connected","os_get_config","os_get_language","os_get_region","os_get_info","os_powersave_enable","os_lock_orientation"]],
+  ["Steam API", ["steam_initialised","steam_stats_ready","steam_is_overlay_enabled","steam_get_persona_name","steam_get_user_persona_name","steam_get_user_steam_id","steam_is_user_logged_on","steam_get_app_id","steam_get_user_account_id","steam_current_game_language","steam_available_languages","steam_activate_overlay","steam_activate_overlay_browser","steam_activate_overlay_store","steam_activate_overlay_user","steam_is_overlay_activated","steam_create_leaderboard","steam_upload_score","steam_upload_score_buffer","steam_download_scores","steam_download_scores_around_user","steam_download_friends_scores","steam_set_achievement","steam_get_achievement","steam_clear_achievement","steam_set_stat_int","steam_set_stat_float","steam_set_stat_avg_rate","steam_get_stat_int","steam_get_stat_float","steam_get_stat_avg_rate","steam_reset_all_stats","steam_reset_all_stats_achievements","steam_is_cloud_enabled_for_app","steam_is_cloud_enabled_for_account","steam_get_quota_total","steam_get_quota_free","steam_file_exists","steam_file_size","steam_file_persisted","steam_file_write","steam_file_write_file","steam_file_read","steam_file_share","steam_file_delete","steam_is_screenshot_requested","steam_send_screenshot","steam_publish_workshop_file","steam_user_owns_dlc","steam_user_installed_dlc"]],
+  ["Achievements & Leaderboards", ["achievement_login_status","achievement_login","achievement_logout","achievement_available","achievement_post","achievement_post_score","achievement_increment","achievement_show_achievements","achievement_show_leaderboards","achievement_show_challenge_notifications","achievement_get_challenges","achievement_get_pic","achievement_load_friends","achievement_load_leaderboard","achievement_load_progress","achievement_send_challenge","achievement_reset"]],
+  ["Facebook", ["facebook_init","facebook_login","facebook_request_publish_permissions","facebook_request_read_permissions","facebook_check_permission","facebook_status","facebook_accesstoken","facebook_user_id","facebook_graph_request","facebook_dialog","facebook_send_invite","facebook_post_message","facebook_logout"]],
+];
 
 function slugify(s){
   return s.toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/(^-|-$)/g,'');
@@ -787,7 +878,51 @@ if (patchedGrid) {
   });
 }
 
+// Confirmed-missing chips grouped under their GM8.1 category name.
+let pendingFnsTotal = 0;
+const pendingGridExisting = document.getElementById('pendingGridExisting');
+if (pendingGridExisting) {
+  Object.entries(GMS14_PENDING).forEach(([catName, fns]) => {
+    pendingFnsTotal += fns.length;
+    const h4 = document.createElement('h4');
+    h4.textContent = catName;
+    pendingGridExisting.appendChild(h4);
+    const grid = document.createElement('div');
+    grid.className = 'chipgrid';
+    fns.forEach(fn => {
+      grid.appendChild(makeChip(fn, 'pending', 'Confirmed missing from this runner - not yet patched in'));
+    });
+    pendingGridExisting.appendChild(grid);
+    if (GMS14_PENDING_NOTES[catName]) {
+      const note = document.createElement('p');
+      note.className = 'cat-note';
+      note.textContent = GMS14_PENDING_NOTES[catName];
+      pendingGridExisting.appendChild(note);
+    }
+  });
+}
+
+// Confirmed-missing chips for entire feature areas GM8.1 has no category for.
+const pendingGridNew = document.getElementById('pendingGridNew');
+if (pendingGridNew) {
+  GMS14_NEW_CATEGORIES.forEach(([catName, fns]) => {
+    pendingFnsTotal += fns.length;
+    const h4 = document.createElement('h4');
+    h4.textContent = catName;
+    pendingGridNew.appendChild(h4);
+    const grid = document.createElement('div');
+    grid.className = 'chipgrid';
+    fns.forEach(fn => {
+      grid.appendChild(makeChip(fn, 'pending', 'Confirmed missing from this runner - not yet patched in'));
+    });
+    pendingGridNew.appendChild(grid);
+  });
+}
+
 document.getElementById('statTotal').textContent = totalFns;
+document.getElementById('statPending').textContent = pendingFnsTotal;
+document.getElementById('ledgerPendingCount').textContent = pendingFnsTotal;
+document.getElementById('gms14MajorCount').textContent = '4 patched in · ' + pendingFnsTotal + ' confirmed missing';
 
 const filterInput = document.getElementById('filterInput');
 const filtercount = document.getElementById('filtercount');
