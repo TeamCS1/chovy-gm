@@ -520,8 +520,8 @@ footer{
     <p>Functions GMS1.4 projects can call that this GM8.1-era runner never shipped, now patched in as real native code &#8212; not a loader-level workaround, actual machine code living inside the runner.</p>
 
     <div class="ledger-stats">
-      <div><span class="n">1 / 1185</span><span class="l">native slots patched</span></div>
-      <div><span class="n">confirmed</span><span class="l">rendering in PPSSPP</span></div>
+      <div><span class="n">4</span><span class="l">native functions patched in</span></div>
+      <div><span class="n">confirmed</span><span class="l">working in PPSSPP</span></div>
       <div><span class="n">GMS1.4-only</span><span class="l">activation gate</span></div>
     </div>
 
@@ -535,6 +535,20 @@ footer{
         <li><b>The function body</b> &#8212; reads the instance's own <code style="font-family:var(--mono)">sprite_index / x / y / image_index / image_xscale / image_yscale / image_angle / image_alpha</code> via 8 getter functions the runner already had, packs them into the same argument shape <code style="font-family:var(--mono)">draw_sprite_ext</code> expects, and tail-calls straight into <code style="font-family:var(--mono)">draw_sprite_ext</code>'s own real implementation. No sprite-drawing logic was reimplemented &#8212; every call target already existed.</li>
         <li><b>Where the new code lives</b> &#8212; appended into the runner's own pre-existing free memory (a <code style="font-family:var(--mono)">.bss</code>-style region reserving far more space than it uses), so nothing about the ELF's structure changed. Room here for many more small patches like this one.</li>
         <li><b>Tested</b> &#8212; a GMS1.4 project's Draw event calling <code style="font-family:var(--mono)">draw_self()</code> now renders the sprite correctly in PPSSPP, with the game running indefinitely instead of the previous silent exit.</li>
+      </ul>
+    </div>
+
+    <div class="entry">
+      <div class="entry-head">
+        <code>clamp() / lerp() / dot_product()</code>
+        <span class="status-pill">Implemented &middot; confirmed in PPSSPP</span>
+      </div>
+      <ul>
+        <li><b>Confirmed genuinely missing</b> &#8212; unlike most gaps found via the static scan, these three strings don't exist anywhere in the binary at all, not just unregistered.</li>
+        <li><b>clamp(value, min, max)</b> needs no new arithmetic: GM8.1 already has real, registered <code style="font-family:var(--mono)">min()</code>/<code style="font-family:var(--mono)">max()</code> functions, so it's implemented as <code style="font-family:var(--mono)">min(max(value, min), max)</code> &#8212; copy the arguments into scratch space and delegate, same philosophy as <code style="font-family:var(--mono)">draw_self()</code>.</li>
+        <li><b>lerp(a, b, amt)</b> and <b>dot_product(x1, y1, x2, y2)</b> are genuine new arithmetic, using a newly-confirmed mechanism: unbox each argument to a hardware single-precision float, compute with plain FPU instructions, rebox the result.</li>
+        <li class="missing"><b>Two real bugs found and fixed along the way</b> &#8212; an early version hooked the registration routine's entry (mirroring <code style="font-family:var(--mono)">draw_self()</code>'s approach exactly) and silently corrupted every <em>other</em> function that routine registers, including <code style="font-family:var(--mono)">string()</code>; the fix hooks its exit instead. A second, separate bug registered all three functions with the wrong argument count (copy-pasted from <code style="font-family:var(--mono)">draw_self()</code>, which correctly takes zero) &#8212; both produced the identical silent-exit symptom, isolated by testing with zero calls first, then one function at a time.</li>
+        <li><b>Tested</b> &#8212; a 7-case battery (three <code style="font-family:var(--mono)">clamp()</code>, two <code style="font-family:var(--mono)">lerp()</code>, two <code style="font-family:var(--mono)">dot_product()</code>) passed 7/7 live in PPSSPP.</li>
       </ul>
     </div>
 

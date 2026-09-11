@@ -34,6 +34,9 @@ namespace GMAssetCompiler
 		private static readonly HashSet<string> Gms14PatchedAdditions = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
 		{
 			"draw_self",
+			"clamp",
+			"lerp",
+			"dot_product",
 		};
 
 		// Scans one piece of GML source and returns the distinct function-call-
