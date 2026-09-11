@@ -25,12 +25,23 @@ namespace GMAssetCompiler
 
 		private static readonly Regex CallPattern = new Regex(@"\b([A-Za-z_][A-Za-z0-9_]*)\s*\(", RegexOptions.Compiled);
 
+		// Functions genuinely missing from the stock runner but patched in as
+		// real native code for the GMS1.4 target specifically (see CLAUDE.md's
+		// "draw_self() patched into the runner" section and
+		// tools/runner_patch/). Only ever consulted when validating a GMS1.4
+		// build - the GM8.1 target always uses the standard, unpatched runner,
+		// so a GM8.1 project calling draw_self() should still warn.
+		private static readonly HashSet<string> Gms14PatchedAdditions = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+		{
+			"draw_self",
+		};
+
 		// Scans one piece of GML source and returns the distinct function-call-
 		// shaped identifiers in it that aren't GML keywords, aren't one of the
 		// caller's own known-valid names (script names, object/room/sprite
 		// names used as action_execute_script-style targets, etc.), and
 		// aren't in the runner's own supported-function table.
-		public static IEnumerable<string> FindUnsupportedCalls(string _gmlSource, ICollection<string> _knownNames)
+		public static IEnumerable<string> FindUnsupportedCalls(string _gmlSource, ICollection<string> _knownNames, bool _isGms14Target = false)
 		{
 			if (string.IsNullOrEmpty(_gmlSource))
 			{
@@ -43,6 +54,7 @@ namespace GMAssetCompiler
 				if (Keywords.Contains(name)) continue;
 				if (_knownNames != null && _knownNames.Contains(name)) continue;
 				if (RunnerSupportedFunctions.Names.Contains(name)) continue;
+				if (_isGms14Target && Gms14PatchedAdditions.Contains(name)) continue;
 				if (!seen.Add(name)) continue;
 				yield return name;
 			}
@@ -56,7 +68,7 @@ namespace GMAssetCompiler
 		// skip in Loader.LoadGMS14Action) rather than hard-erroring, since the
 		// call might be dead code, or the developer may be deliberately
 		// targeting a different runner build with broader support.
-		public static void ValidateAssets(GMAssets _assets)
+		public static void ValidateAssets(GMAssets _assets, bool _isGms14Target = false)
 		{
 			HashSet<string> knownNames = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 			foreach (KeyValuePair<string, GMScript> script in _assets.Scripts)
@@ -67,7 +79,7 @@ namespace GMAssetCompiler
 			foreach (KeyValuePair<string, GMScript> script in _assets.Scripts)
 			{
 				if (script.Value == null) continue;
-				foreach (string unsupported in FindUnsupportedCalls(script.Value.Script, knownNames))
+				foreach (string unsupported in FindUnsupportedCalls(script.Value.Script, knownNames, _isGms14Target))
 				{
 					Console.WriteLine("Warning: script '{0}' calls '{1}', which is not in this runner's supported GML function table - it will fail PrepareGame silently on-device if actually reached.", script.Key, unsupported);
 				}
@@ -76,7 +88,7 @@ namespace GMAssetCompiler
 			foreach (KeyValuePair<string, GMObject> obj in _assets.Objects)
 			{
 				if (obj.Value == null) continue;
-				ValidateEventSlots(obj.Key, obj.Value.Events, knownNames);
+				ValidateEventSlots(obj.Key, obj.Value.Events, knownNames, _isGms14Target);
 			}
 
 			foreach (KeyValuePair<string, GMTimeLine> timeline in _assets.TimeLines)
@@ -84,12 +96,12 @@ namespace GMAssetCompiler
 				if (timeline.Value == null) continue;
 				foreach (KeyValuePair<int, GMEvent> entry in timeline.Value.Entries)
 				{
-					ValidateEvent(timeline.Key, entry.Value, knownNames);
+					ValidateEvent(timeline.Key, entry.Value, knownNames, _isGms14Target);
 				}
 			}
 		}
 
-		private static void ValidateEventSlots(string _ownerName, IList<IList<KeyValuePair<int, GMEvent>>> _eventSlots, ICollection<string> _knownNames)
+		private static void ValidateEventSlots(string _ownerName, IList<IList<KeyValuePair<int, GMEvent>>> _eventSlots, ICollection<string> _knownNames, bool _isGms14Target)
 		{
 			if (_eventSlots == null) return;
 			foreach (IList<KeyValuePair<int, GMEvent>> slot in _eventSlots)
@@ -97,19 +109,19 @@ namespace GMAssetCompiler
 				if (slot == null) continue;
 				foreach (KeyValuePair<int, GMEvent> entry in slot)
 				{
-					ValidateEvent(_ownerName, entry.Value, _knownNames);
+					ValidateEvent(_ownerName, entry.Value, _knownNames, _isGms14Target);
 				}
 			}
 		}
 
-		private static void ValidateEvent(string _ownerName, GMEvent _event, ICollection<string> _knownNames)
+		private static void ValidateEvent(string _ownerName, GMEvent _event, ICollection<string> _knownNames, bool _isGms14Target)
 		{
 			if (_event == null || _event.Actions == null) return;
 			foreach (GMAction action in _event.Actions)
 			{
 				if (action == null || action.Kind != eAction.ACT_CODE) continue;
 				string code = action.Args != null && action.Args.Count > 0 ? action.Args[0] : action.Code;
-				foreach (string unsupported in FindUnsupportedCalls(code, _knownNames))
+				foreach (string unsupported in FindUnsupportedCalls(code, _knownNames, _isGms14Target))
 				{
 					Console.WriteLine("Warning: '{0}' calls '{1}', which is not in this runner's supported GML function table - it will fail PrepareGame silently on-device if actually reached.", _ownerName, unsupported);
 				}

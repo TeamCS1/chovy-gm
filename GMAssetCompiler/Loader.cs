@@ -218,7 +218,7 @@ namespace GMAssetCompiler
 			}
 
 			TagBackgroundTilesets(assets);
-			GMLFunctionValidator.ValidateAssets(assets);
+			GMLFunctionValidator.ValidateAssets(assets, _isGms14Target: true);
 			return assets;
 		}
 

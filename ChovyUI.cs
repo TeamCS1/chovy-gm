@@ -136,15 +136,53 @@ namespace ChovyUI
         // notes in CLAUDE.md) and place KAROSHI.BIN/GREENTECHPLUS.BIN there.
         // Silently does nothing but log a warning if the file isn't present,
         // so this is always safe to call unconditionally.
-        public static void StageDecryptedEbootForTesting(string _isoTempDir, bool _greenTechPlus)
+        //
+        // For the GMS1.4 target specifically, this reaches for a *third* file,
+        // KAROSHI_GMS14PATCHED.BIN - a copy of KAROSHI.BIN with genuinely
+        // missing GML functions (draw_self() as of writing) patched in as
+        // real native code, built by tools/runner_patch/ (see CLAUDE.md's
+        // "draw_self() patched into the runner" section). This is the only
+        // place that distinction is ever made: the GM8.1 target always gets
+        // the standard runner, unconditionally, regardless of this flag.
+        // GreenTechPlus has no patched variant yet, so a GMS1.4+GreenTechPlus
+        // combination falls back to the standard GREENTECHPLUS.BIN with a
+        // warning rather than silently pretending it's patched.
+        public static void StageDecryptedEbootForTesting(string _isoTempDir, bool _greenTechPlus, eGMTarget _target)
         {
-            string decryptedName = _greenTechPlus ? "GREENTECHPLUS.BIN" : "KAROSHI.BIN";
+            string decryptedName;
+            if (_greenTechPlus)
+            {
+                decryptedName = "GREENTECHPLUS.BIN";
+                if (_target == eGMTarget.GameMakerStudio14)
+                {
+                    Console.WriteLine("Warning: no patched runner exists yet for GreenTechPlus - staging the standard (unpatched) GREENTECHPLUS.BIN for this GMS1.4 build.");
+                }
+            }
+            else if (_target == eGMTarget.GameMakerStudio14)
+            {
+                decryptedName = "KAROSHI_GMS14PATCHED.BIN";
+            }
+            else
+            {
+                decryptedName = "KAROSHI.BIN";
+            }
+
             string decryptedSource = Path.Combine(Application.StartupPath, "RUNNER_DECRYPTED", decryptedName);
             string ebootDest = Path.Combine(_isoTempDir, "PSP_GAME", "SYSDIR", "EBOOT.BIN");
             if (File.Exists(decryptedSource))
             {
                 File.Copy(decryptedSource, ebootDest, true);
                 Console.WriteLine("Staged decrypted EBOOT.BIN for PPSSPP testing (from {0}).", decryptedSource);
+            }
+            else if (decryptedName == "KAROSHI_GMS14PATCHED.BIN")
+            {
+                Console.WriteLine("Warning: decrypted-EBOOT staging was requested for the GMS1.4 target, but no patched runner was found at {0} - falling back to the standard decrypted KAROSHI.BIN.", decryptedSource);
+                string fallback = Path.Combine(Application.StartupPath, "RUNNER_DECRYPTED", "KAROSHI.BIN");
+                if (File.Exists(fallback))
+                {
+                    File.Copy(fallback, ebootDest, true);
+                    Console.WriteLine("Staged decrypted EBOOT.BIN for PPSSPP testing (from {0}).", fallback);
+                }
             }
             else
             {
@@ -205,7 +243,7 @@ namespace ChovyUI
 
             if (StageDecryptedEboot.Checked)
             {
-                StageDecryptedEbootForTesting(InputFolder, GreenTechPlus.Checked);
+                StageDecryptedEbootForTesting(InputFolder, GreenTechPlus.Checked, GetTarget());
             }
 
             //Write to PARAM.SFO:

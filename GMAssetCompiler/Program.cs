@@ -961,7 +961,7 @@ namespace GMAssetCompiler
 
                 if (decryptEboot)
                 {
-                    ChovyUI.ChovyUI.StageDecryptedEbootForTesting(isoTemp, false);
+                    ChovyUI.ChovyUI.StageDecryptedEbootForTesting(isoTemp, false, Target);
                 }
 
                 CompileOnly = true;
