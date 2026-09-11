@@ -569,7 +569,7 @@ footer{
   </div>
 
   <div class="stats">
-    <div class="stat"><span class="n" id="statTotal">1185</span><span class="l">GM8.1 functions supported</span></div>
+    <div class="stat"><span class="n" id="statTotal">1191</span><span class="l">GM8.1 functions supported</span></div>
     <div class="stat"><span class="n">25</span><span class="l">categories, 6 groups</span></div>
     <div class="stat"><span class="n" style="color:var(--verified-text)">4</span><span class="l">GMS1.4 functions patched in</span></div>
     <div class="stat"><span class="n" style="color:var(--signal-text)" id="statPending">&#8212;</span><span class="l">GMS1.4 functions confirmed missing</span></div>
@@ -578,14 +578,14 @@ footer{
   <details class="major-section" open>
     <summary>
       <span class="major-title">GameMaker 8.1</span>
-      <span class="major-count">1,185 functions supported</span>
+      <span class="major-count">1,191 functions supported</span>
     </summary>
 
     <div class="filterbar">
       <input type="text" id="filterInput" placeholder="Filter functions &#8212; try &quot;draw_&quot;, &quot;d3d_&quot;, &quot;ds_grid&quot;&hellip;" autocomplete="off" spellcheck="false">
-      <span id="filtercount">1185 of 1185 shown</span>
+      <span id="filtercount">1191 of 1191 shown</span>
     </div>
-    <div class="legend"><span class="swatch"></span> Live-tested in PPSSPP against the real registration table (Math, Strings, plus draw_text/draw_set_font/draw_text_ext/draw_text_transformed/draw_set_halign/draw_set_valign/draw_text_color/string_width/string_height) &#8212; everything else is registration-confirmed or scan-derived but not yet individually run on-device.</div>
+    <div class="legend"><span class="swatch"></span> Live-tested in PPSSPP against the real registration table (Math, Strings, and individual functions in Drawing: Text &amp; Fonts and Drawing: Color &amp; Blending) &#8212; everything else is registration-confirmed or scan-derived but not yet individually run on-device.</div>
 
     <div class="doc">
       <nav class="toc" id="toc" aria-label="Category index"></nav>
@@ -651,6 +651,19 @@ footer{
       </ul>
     </div>
 
+    <div class="entry">
+      <div class="entry-head">
+        <code>draw_set_color() / draw_get_color() &#8212; Red/Blue swap</code>
+        <span class="status-pill">Fixed &middot; confirmed in PPSSPP</span>
+      </div>
+      <ul>
+        <li><b>Not a missing function &#8212; a bugfix to two existing ones.</b> Found while live-testing the full "Drawing: Color & Blending" category: rendering consistently swapped Red and Blue (a pure "red" drew as blue and vice versa), confirmed with three independent visual checks (a red-then-alpha-blue blend, an HSV hue sweep, and a <code style="font-family:var(--mono)">draw_getpixel</code> target rectangle all showed red/blue reversed, green untouched). Matches a real, documented cross-version GameMaker bug (<code style="font-family:var(--mono)">github.com/YoYoGames/GameMaker-Bugs</code> issue #7070).</li>
+        <li><b>Root cause</b> &#8212; <code style="font-family:var(--mono)">make_color_rgb</code> already packs colors in the exact byte order the PSP's GPU wants (confirmed via its own decompile); the function that combines that packed color with the current alpha for the GPU explicitly (and wrongly) swapped the Red and Blue bytes before combining, undoing byte ordering that never needed touching &#8212; most likely a porting mistake assuming a PC-style byte layout. <code style="font-family:var(--mono)">draw_get_color()</code>'s own read-back path did the exact mirror-image swap, which had been silently canceling out the render bug for round-trip checks the whole time; fixing only the render side broke it, so both got the same fix.</li>
+        <li><b>Pure instruction-level patch</b> &#8212; the corrected logic needs fewer instructions than the bug it replaces, so both fixes fit inside the original functions' own bounds with no free-memory allocation or hook redirection (<code style="font-family:var(--mono)">tools/runner_patch/patch_color_swap_fix.py</code>, <code style="font-family:var(--mono)">patch_get_color_fix.py</code>).</li>
+        <li><b>Tested</b> &#8212; the full color battery re-run after patching: blend swatch, HSV sweep, and the <code style="font-family:var(--mono)">draw_getpixel</code> target all render with correct colors, and the <code style="font-family:var(--mono)">draw_set_color()</code>/<code style="font-family:var(--mono)">draw_get_color()</code> round-trip checks (never broken until this exact investigation touched them) pass again.</li>
+      </ul>
+    </div>
+
     <div class="gate-note">
       <b>Scope limit:</b> this only applies to the opt-in decrypted-EBOOT testing path (PPSSPP only) &#8212; there's no way to re-sign a patched EBOOT without Sony's own keys, so a real distributable ISO build is identical for both targets regardless. <b>Standing constraint:</b> the patched runner is used <b>only</b> when the GMS1.4 build target is selected; the GM8.1 pipeline always keeps shipping the original, unpatched runner.
     </div>
@@ -659,12 +672,12 @@ footer{
   <details class="major-section quirks" open>
     <summary>
       <span class="major-title">Known Runner Quirks</span>
-      <span class="major-count">4 confirmed, not bugs in this toolchain</span>
+      <span class="major-count">6 confirmed, not bugs in this toolchain</span>
     </summary>
 
     <div class="eyebrow">KNOWN RUNNER BEHAVIOR &middot; NOT BUGS IN THIS TOOLCHAIN</div>
     <h2>Confirmed quirks, found by live-testing on real hardware emulation</h2>
-    <p class="scope">All four live in the runner's own compiler/math/string implementation, untouched by any of the native-code patches above &#8212; they apply identically to <b style="color:var(--text)">both GM8.1 and GMS1.4</b> builds, since both compile against the same underlying runner.</p>
+    <p class="scope">All six live in the runner's own compiler/math/string/graphics implementation, untouched by any of the native-code patches above &#8212; they apply identically to <b style="color:var(--text)">both GM8.1 and GMS1.4</b> builds, since both compile against the same underlying runner.</p>
 
     <div class="quirk-item">
       <code>arctan()</code> / <code>arctan2()</code> return radians
@@ -685,6 +698,16 @@ footer{
       <code>var</code> must be declared before any other statement in a code action
       <p>A <code style="font-family:var(--mono)">var</code> local declared anywhere <em>after</em> other statements in the same code action (the common "declare it right before first use" style) fails on-device with a genuine PSP-side GML compile error &#8212; confirmed via a live PPSSPP breakpoint on the runner's compile-error logger, reading back the actual compiler output: <code style="font-family:var(--mono)">unexpected symbol in expression</code>, positioned exactly at the <code style="font-family:var(--mono)">var</code> keyword. The whole action then fails to compile, and the game silently exits with no visible error &#8212; the same invisible-logger symptom as every other compile failure in this runner. This was originally misdiagnosed as a bug in <code style="font-family:var(--mono)">string_width()</code> specifically (a deep Ghidra investigation fully cleared that function and its whole font/width-lookup subsystem before live debugging found the real cause). <b>Declare every <code style="font-family:var(--mono)">var</code> local at the very top of a script or code action</b>, before any other statement.</p>
     </div>
+
+    <div class="quirk-item">
+      <code>color_get_saturation()</code> always returns 0
+      <p>Confirmed via a runner patch attempt and live PPSSPP register debugging (not just static analysis): this function shares its underlying HSV conversion with <code style="font-family:var(--mono)">color_get_hue()</code>/<code style="font-family:var(--mono)">color_get_value()</code>, and that conversion (<code style="font-family:var(--mono)">FUN_000bf1e8</code>) has a confirmed bug of its own beyond the Red/Blue swap fixed above &#8212; live-traced with a correctly-formed input, it returns a flat <code style="font-family:var(--mono)">0</code> for hue, saturation, <em>and</em> value alike. A runner patch (<code style="font-family:var(--mono)">tools/runner_patch/patch_hsv_conservative_fix.py</code>) recovers correct <code style="font-family:var(--mono)">color_get_hue()</code>/<code style="font-family:var(--mono)">color_get_value()</code> results for the specific case tested (pure red) by redirecting which intermediate value gets returned, but saturation still comes back wrong, and hue/value's correctness for <em>other</em> hues hasn't been verified &#8212; the deeper bug wasn't safe to guess at further via static reading given how many times this exact function chain already contradicted careful hand-analysis (see CLAUDE.md's full writeup). <b>Don't rely on <code style="font-family:var(--mono)">color_get_saturation()</code></b>, and treat <code style="font-family:var(--mono)">color_get_hue()</code>/<code style="font-family:var(--mono)">color_get_value()</code> as verified only for hues at or near pure red until tested further.</p>
+    </div>
+
+    <div class="quirk-item">
+      <code>draw_getpixel()</code> always returns 0
+      <p>Not a logic bug &#8212; the actual pixel-read routine (<code style="font-family:var(--mono)">FUN_000cef94</code>) is a literal two-instruction stub (<code style="font-family:var(--mono)">jr ra</code> / <code style="font-family:var(--mono)">nop</code>) that returns immediately without reading anything. Confirmed via raw disassembly: pixel readback from the framebuffer was never implemented on this PSP port at all. A rectangle drawn immediately before calling this function renders correctly on-screen (confirmed visually), proving the drawing itself works fine &#8212; only the readback is missing. Implementing this for real would mean writing genuinely new code (querying the PSP's actual framebuffer address and indexing into VRAM in the correct pixel format), not patching existing logic &#8212; a different category of work than every other fix on this page. <b>Don't rely on <code style="font-family:var(--mono)">draw_getpixel()</code></b> on this runner.</p>
+    </div>
   </details>
 
   <footer>Compiled from a full static extraction of the runner's supported-function table &#8212; see chovy-gm/GMAssetCompiler/RunnerSupportedFunctions.cs for the raw list this page renders.</footer>
@@ -701,7 +724,7 @@ const DATA = {
 "Strings": ["chr","is_real","is_string","ord","real","string","string_char_at","string_copy","string_count","string_delete","string_digits","string_format","string_insert","string_length","string_letters","string_lettersdigits","string_lower","string_pos","string_repeat","string_replace","string_replace_all","string_upper"],
 "External DLLs & Misc System": ["clipboard_get_text","clipboard_has_text","clipboard_set_text","event_inherited","event_perform","event_perform_object","event_user","execute_file","execute_string","external_call","external_call0","external_call1","external_call2","external_call3","external_call4","external_call5","external_call6","external_call7","external_call8","external_define","external_define0","external_define1","external_define2","external_define3","external_define4","external_define5","external_define6","external_define7","external_define8","external_free","game_end","game_load","game_restart","game_save","show_debug_message"],
 "Motion Planning (mp_*) & Paths": ["collision_circle","collision_ellipse","collision_line","collision_point","collision_rectangle","distance_to_object","distance_to_point","motion_add","motion_set","move_bounce","move_bounce_all","move_bounce_solid","move_contact","move_contact_all","move_contact_solid","move_outside_all","move_outside_solid","move_random","move_snap","move_towards_point","move_wrap","mp_grid_add_cell","mp_grid_add_instances","mp_grid_add_rectangle","mp_grid_clear_all","mp_grid_clear_cell","mp_grid_clear_rectangle","mp_grid_create","mp_grid_destroy","mp_grid_draw","mp_grid_path","mp_linear_path","mp_linear_path_object","mp_linear_step","mp_linear_step_object","mp_potential_path","mp_potential_path_object","mp_potential_settings","mp_potential_step","mp_potential_step_object","path_add","path_add_point","path_append","path_assign","path_change_point","path_clear_points","path_delete","path_delete_point","path_duplicate","path_end","path_exists","path_flip","path_get_closed","path_get_kind","path_get_length","path_get_name","path_get_number","path_get_point_speed","path_get_point_x","path_get_point_y","path_get_precision","path_get_speed","path_get_x","path_get_y","path_insert_point","path_mirror","path_name","path_reverse","path_rotate","path_scale","path_set_closed","path_set_kind","path_set_precision","path_shift","path_start","place_empty","place_free","place_meeting","place_snapped","position_change","position_destroy","position_empty","position_meeting"],
-"Drawing: Color & Blending": ["draw_get_alpha","draw_get_color","draw_getpixel","draw_set_alpha","draw_set_blend_mode","draw_set_blend_mode_ext","draw_set_color","make_color","make_color_hsv","make_color_rgb","merge_color"],
+"Drawing: Color & Blending": ["color_get_red","color_get_green","color_get_blue","color_get_hue","color_get_saturation","color_get_value","draw_get_alpha","draw_get_color","draw_getpixel","draw_set_alpha","draw_set_blend_mode","draw_set_blend_mode_ext","draw_set_color","make_color","make_color_hsv","make_color_rgb","merge_color"],
 "3D Drawing (d3d_*)": ["d3d_draw_block","d3d_draw_cone","d3d_draw_cylinder","d3d_draw_ellipsoid","d3d_draw_floor","d3d_draw_wall","d3d_end","d3d_light_define_direction","d3d_light_define_point","d3d_light_enable","d3d_model_block","d3d_model_clear","d3d_model_cone","d3d_model_create","d3d_model_cylinder","d3d_model_destroy","d3d_model_draw","d3d_model_ellipsoid","d3d_model_floor","d3d_model_load","d3d_model_primitive_begin","d3d_model_primitive_end","d3d_model_save","d3d_model_vertex","d3d_model_vertex_color","d3d_model_vertex_normal","d3d_model_vertex_normal_color","d3d_model_vertex_normal_texture","d3d_model_vertex_normal_texture_color","d3d_model_vertex_texture","d3d_model_vertex_texture_color","d3d_model_wall","d3d_primitive_begin","d3d_primitive_begin_texture","d3d_primitive_end","d3d_set_culling","d3d_set_depth","d3d_set_fog","d3d_set_hidden","d3d_set_lighting","d3d_set_perspective","d3d_set_projection","d3d_set_projection_ext","d3d_set_projection_ortho","d3d_set_projection_perspective","d3d_set_shading","d3d_start","d3d_transform_add_rotation_axis","d3d_transform_add_rotation_x","d3d_transform_add_rotation_y","d3d_transform_add_rotation_z","d3d_transform_add_scaling","d3d_transform_add_translation","d3d_transform_set_identity","d3d_transform_set_rotation_axis","d3d_transform_set_rotation_x","d3d_transform_set_rotation_y","d3d_transform_set_rotation_z","d3d_transform_set_scaling","d3d_transform_set_translation","d3d_transform_stack_clear","d3d_transform_stack_discard","d3d_transform_stack_empty","d3d_transform_stack_pop","d3d_transform_stack_push","d3d_transform_stack_top","d3d_vertex","d3d_vertex_color","d3d_vertex_normal","d3d_vertex_normal_color","d3d_vertex_normal_texture","d3d_vertex_normal_texture_color","d3d_vertex_texture","d3d_vertex_texture_color"],
 "Date & Time": ["date_compare_date","date_compare_datetime","date_compare_time","date_create_date","date_create_datetime","date_create_time","date_current_date","date_current_datetime","date_current_time","date_date_of","date_date_string","date_datetime_string","date_day_span","date_days_in_month","date_days_in_year","date_get_day","date_get_day_of_year","date_get_hour","date_get_hour_of_year","date_get_minute","date_get_minute_of_year","date_get_month","date_get_second","date_get_second_of_year","date_get_week","date_get_weekday","date_get_year","date_hour_span","date_inc_day","date_inc_hour","date_inc_minute","date_inc_month","date_inc_second","date_inc_week","date_inc_year","date_is_today","date_leap_year","date_minute_span","date_month_span","date_second_span","date_time_of","date_time_string","date_valid_date","date_valid_datetime","date_valid_time","date_week_span","date_year_span"],
 "Files, Registry & INI": ["directory_create","directory_exists","discard_include_file","environment_get_variable","execute_program","execute_shell","export_include_file","export_include_file_location","file_attributes","file_bin_close","file_bin_open","file_bin_position","file_bin_read_byte","file_bin_rewrite","file_bin_seek","file_bin_size","file_bin_write_byte","file_close","file_copy","file_delete","file_eof","file_exists","file_find_close","file_find_first","file_find_next","file_open_append","file_open_read","file_open_write","file_read_real","file_read_string","file_readln","file_rename","file_text_close","file_text_eof","file_text_open_append","file_text_open_read","file_text_open_write","file_text_read_real","file_text_read_string","file_text_readln","file_text_write_real","file_text_write_string","file_text_writeln","file_write_real","file_write_string","file_writeln","filename_change_ext","filename_dir","filename_drive","filename_ext","filename_name","filename_path","ini_close","ini_key_delete","ini_key_exists","ini_open","ini_read_real","ini_read_string","ini_section_delete","ini_section_exists","ini_write_real","ini_write_string","parameter_count","parameter_string","registry_exists","registry_exists_ext","registry_read_real","registry_read_real_ext","registry_read_string","registry_read_string_ext","registry_set_root","registry_write_real","registry_write_real_ext","registry_write_string","registry_write_string_ext"],
@@ -738,7 +761,17 @@ const SUPERGROUPS = [
 // (the Drawing: Text & Fonts sweep - also where the var-mid-action compile quirk,
 // not a bug in any of these, was found and documented under Known Runner Quirks).
 const VERIFIED_TEXT_FUNCTIONS = ["draw_text", "draw_set_font", "draw_text_ext", "draw_text_transformed", "draw_set_halign", "draw_set_valign", "draw_text_color", "string_width", "string_height"];
-const VERIFIED = new Set([...(DATA["Strings"] || []), ...(DATA["Math"] || []), ...VERIFIED_TEXT_FUNCTIONS]);
+// Confirmed working live in PPSSPP by the Drawing: Color & Blending sweep - draw_getpixel,
+// color_get_saturation, and color_get_value are deliberately excluded (all three confirmed
+// broken; see the ledger's Known Runner Quirks section and CLAUDE.md's Red/Blue swap writeup).
+// color_get_saturation is deliberately excluded - confirmed broken (always returns
+// 0) via a runner patch attempt and live PPSSPP register debugging; see CLAUDE.md's
+// "PARTIALLY RESOLVED" writeup and the Known Runner Quirks section below. hue/value
+// are verified only for the specific pure-red test case actually run - correctness
+// for other hues is unverified given the underlying HSV conversion's confirmed
+// deeper bug (FUN_000bf1e8 returns 0 for at least one well-formed input).
+const VERIFIED_COLOR_FUNCTIONS = ["draw_set_color", "draw_get_color", "draw_set_alpha", "draw_get_alpha", "make_color", "make_color_rgb", "make_color_hsv", "merge_color", "color_get_red", "color_get_green", "color_get_blue", "color_get_hue", "color_get_value", "draw_set_blend_mode", "draw_set_blend_mode_ext"];
+const VERIFIED = new Set([...(DATA["Strings"] || []), ...(DATA["Math"] || []), ...VERIFIED_TEXT_FUNCTIONS, ...VERIFIED_COLOR_FUNCTIONS]);
 
 // Functions that don't exist in stock GM8.1 at all - patched into the runner as real
 // native code, GMS1.4-only (see the ledger section below). Shown inline in the category
