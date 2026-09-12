@@ -599,7 +599,7 @@ footer{
       <span class="major-count" id="gms14MajorCount">4 patched in</span>
     </summary>
 
-    <p>Functions GMS1.4 projects can call that this GM8.1-era runner never shipped, now patched in as real native code &#8212; not a loader-level workaround, actual machine code living inside the runner. Below: what's done, what's confirmed missing but not yet implemented (sourced against the real <a href="https://www.hitscan.org/dadiospice/" style="color:inherit">GameMaker: Studio 1.4 manual archive</a>, not guessed), grouped the same way as the GM8.1 section above &#8212; by category, and by whether a GM8.1 category applies at all.</p>
+    <p>Functions GMS1.4 projects can call that this GM8.1-era runner never shipped, now patched in as real native code &#8212; not a loader-level workaround, actual machine code living inside the runner. Below: what's done and what's still confirmed missing (sourced against the real <a href="https://www.hitscan.org/dadiospice/" style="color:inherit">GameMaker: Studio 1.4 manual archive</a>, not guessed), <b style="color:var(--text);">side by side within each GM8.1 category</b> &#8212; the same green-means-done, plain-means-not convention as the GM8.1 section above &#8212; then separately by whole feature areas GM8.1 never had a category for at all.</p>
 
     <div class="ledger-stats">
       <div><span class="n">4</span><span class="l">native functions patched in</span></div>
@@ -612,11 +612,8 @@ footer{
       <span class="swatch" style="background:var(--surface); border-color:var(--border); margin-left:0.75rem;"></span> Confirmed missing from this runner, not yet patched in
     </div>
 
-    <h4 style="font-family:var(--display); font-weight:700; font-size:1.05rem; color:var(--text); margin:1.5rem 0 0;">Implemented</h4>
-    <div class="patched-grid" id="patchedGrid"></div>
-
-    <h4 style="font-family:var(--display); font-weight:700; font-size:1.05rem; color:var(--text); margin:0.5rem 0 0;">Confirmed missing &#8212; grouped by GM8.1 category</h4>
-    <div class="patched-grid" id="pendingGridExisting"></div>
+    <h4 style="font-family:var(--display); font-weight:700; font-size:1.05rem; color:var(--text); margin:1.5rem 0 0;">By GM8.1 category</h4>
+    <div class="patched-grid" id="categoryGrid"></div>
 
     <h4 style="font-family:var(--display); font-weight:700; font-size:1.05rem; color:var(--text); margin:0.5rem 0 0;">Confirmed missing &#8212; entire feature areas GM8.1 never had</h4>
     <p style="color:var(--text-muted); font-size:0.88rem; margin:0.3rem 0 0; max-width:70ch;">These have no GM8.1 category to sit under at all &#8212; Box2D physics, the buffer/vertex-buffer APIs, shaders, gamepad input, and the platform-integration surfaces (Steam, Facebook, achievements) all arrived after this runner's era.</p>
@@ -897,44 +894,44 @@ SUPERGROUPS.forEach(([groupName, cats]) => {
   });
 });
 
-// GMS1.4-patched quick chip grid, grouped by the category each function
-// logically belongs to - lives entirely inside the GMS1.4 <details> section,
-// never mixed into the GM8.1 grid above.
-const patchedGrid = document.getElementById('patchedGrid');
-if (patchedGrid) {
-  Object.entries(GMS14_PATCHED).forEach(([catName, fns]) => {
+// Merged GMS1.4-by-category grid: for every GM8.1 category that has either an
+// implemented patch or a confirmed-missing gap (or both), one heading and one
+// chipgrid holding both - green chips first (done), then plain chips (still
+// missing) - so a thin category like "Drawing: Sprites & Backgrounds" (just
+// draw_self, nothing missing) and a fuller one like "Math" (3 done, 5 still
+// missing) read the same way at a glance, matching the GM8.1 section's own
+// green-means-done/plain-means-not convention instead of splitting done and
+// missing into two separate page sections far apart.
+let pendingFnsTotal = 0;
+const categoryGrid = document.getElementById('categoryGrid');
+if (categoryGrid) {
+  const CATEGORY_ORDER = SUPERGROUPS.flatMap(([, cats]) => cats);
+  const mergedCats = new Set([...Object.keys(GMS14_PATCHED), ...Object.keys(GMS14_PENDING)]);
+  const orderedCats = CATEGORY_ORDER.filter(c => mergedCats.has(c))
+    .concat([...mergedCats].filter(c => !CATEGORY_ORDER.includes(c)));
+
+  orderedCats.forEach(catName => {
+    const done = GMS14_PATCHED[catName] || [];
+    const missing = GMS14_PENDING[catName] || [];
+    pendingFnsTotal += missing.length;
+
     const h4 = document.createElement('h4');
     h4.textContent = catName;
-    patchedGrid.appendChild(h4);
+    categoryGrid.appendChild(h4);
     const grid = document.createElement('div');
     grid.className = 'chipgrid';
-    fns.forEach(fn => {
+    done.forEach(fn => {
       grid.appendChild(makeChip(fn, 'verified', 'Confirmed working in PPSSPP - click to copy'));
     });
-    patchedGrid.appendChild(grid);
-  });
-}
-
-// Confirmed-missing chips grouped under their GM8.1 category name.
-let pendingFnsTotal = 0;
-const pendingGridExisting = document.getElementById('pendingGridExisting');
-if (pendingGridExisting) {
-  Object.entries(GMS14_PENDING).forEach(([catName, fns]) => {
-    pendingFnsTotal += fns.length;
-    const h4 = document.createElement('h4');
-    h4.textContent = catName;
-    pendingGridExisting.appendChild(h4);
-    const grid = document.createElement('div');
-    grid.className = 'chipgrid';
-    fns.forEach(fn => {
+    missing.forEach(fn => {
       grid.appendChild(makeChip(fn, '', 'Confirmed missing from this runner - not yet patched in'));
     });
-    pendingGridExisting.appendChild(grid);
+    categoryGrid.appendChild(grid);
     if (GMS14_PENDING_NOTES[catName]) {
       const note = document.createElement('p');
       note.className = 'cat-note';
       note.textContent = GMS14_PENDING_NOTES[catName];
-      pendingGridExisting.appendChild(note);
+      categoryGrid.appendChild(note);
     }
   });
 }
