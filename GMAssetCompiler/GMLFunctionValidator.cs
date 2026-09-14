@@ -451,6 +451,86 @@ namespace GMAssetCompiler
 					ValidateEvent(timeline.Key, entry.Value, knownNames, _assets, combined, _isGms14Target);
 				}
 			}
+
+			// Room creation code and per-instance creation code are real GML
+			// that gets compiled into the ROOM chunk and runs on-device, but
+			// nothing above reaches them - they live on GMRoom.Code and
+			// GMInstance.Code, not in any event list. Until this loop existed,
+			// a bad call or resource name in either was invisible to BOTH
+			// checks: verified by planting draw_set_font(<missing font>) in
+			// room creation code and sprite_index = <missing sprite> in
+			// instance creation code and getting a completely clean build.
+			// Instance creation code especially matters - setting sprite_index
+			// there is exactly the pattern the resource check exists for.
+			Dictionary<int, string> objectCodeCache = new Dictionary<int, string>();
+			foreach (KeyValuePair<string, GMRoom> room in _assets.Rooms)
+			{
+				if (room.Value == null) continue;
+
+				// An instance's creation code can freely use variables the
+				// object's own Create event set, and the room's creation code
+				// shares scope with nothing but itself - so the shadow source
+				// is the room's own code plus every instance's code, widened
+				// per-instance with that instance's object's events below.
+				string roomShadow = room.Value.Code ?? string.Empty;
+				if (room.Value.Instances != null)
+				{
+					System.Text.StringBuilder sb = new System.Text.StringBuilder(roomShadow);
+					foreach (GMInstance inst in room.Value.Instances)
+					{
+						if (inst != null && !string.IsNullOrEmpty(inst.Code)) sb.Append('\n').Append(inst.Code);
+					}
+					roomShadow = sb.ToString();
+				}
+
+				string roomLabel = string.Format("room '{0}' creation code", room.Key);
+				ValidateCodeBlob(roomLabel, room.Value.Code, knownNames, _assets, roomShadow, _isGms14Target);
+
+				if (room.Value.Instances == null) continue;
+				foreach (GMInstance inst in room.Value.Instances)
+				{
+					if (inst == null || string.IsNullOrEmpty(inst.Code)) continue;
+
+					string objectName = null;
+					string objectCode;
+					if (!objectCodeCache.TryGetValue(inst.Index, out objectCode))
+					{
+						objectCode = string.Empty;
+						if (inst.Index >= 0 && inst.Index < _assets.Objects.Count)
+						{
+							KeyValuePair<string, GMObject> owner = _assets.Objects[inst.Index];
+							objectName = owner.Key;
+							if (owner.Value != null) objectCode = CollectAllCode(owner.Value.Events);
+						}
+						objectCodeCache[inst.Index] = objectCode;
+					}
+					else if (inst.Index >= 0 && inst.Index < _assets.Objects.Count)
+					{
+						objectName = _assets.Objects[inst.Index].Key;
+					}
+
+					string instLabel = objectName != null
+						? string.Format("room '{0}' creation code for instance of '{1}'", room.Key, objectName)
+						: string.Format("room '{0}' creation code for instance {1}", room.Key, inst.Id);
+					ValidateCodeBlob(instLabel, inst.Code, knownNames, _assets, roomShadow + "\n" + objectCode, _isGms14Target);
+				}
+			}
+		}
+
+		// One code blob, both checks, shared warning wording - the room/instance
+		// creation-code paths have no GMEvent/GMAction wrapper to hang
+		// ValidateEvent off, so they call this directly.
+		private static void ValidateCodeBlob(string _ownerLabel, string _code, ICollection<string> _knownNames, GMAssets _assets, string _shadowCheckSource, bool _isGms14Target)
+		{
+			if (string.IsNullOrEmpty(_code)) return;
+			foreach (string unsupported in FindUnsupportedCalls(_code, _knownNames, _isGms14Target))
+			{
+				Console.WriteLine("Warning: {0} calls '{1}', which is not in this runner's supported GML function table - it will fail PrepareGame silently on-device if actually reached.", _ownerLabel, unsupported);
+			}
+			foreach (string badRef in FindUndefinedResourceReferences(_code, _assets, _shadowCheckSource))
+			{
+				Console.WriteLine("Warning: {0} references {1}, but that name isn't a real resource in this project - it will silently become an ordinary (likely undefined) variable at compile time and fail at runtime.", _ownerLabel, badRef);
+			}
 		}
 
 		private static string CollectAllCode(IList<IList<KeyValuePair<int, GMEvent>>> _eventSlots)
