@@ -373,6 +373,29 @@ main.content{min-width:0;}
   border-color:var(--signal);
   color:var(--signal-text);
 }
+/* Not-applicable chips: visibly inert. Dimmed and struck through so they read
+   as "this will never be here" at a glance, clearly distinct from a plain
+   pending chip, which reads as "not here yet". */
+.chip.na{
+  background:transparent;
+  border-style:dashed;
+  border-color:var(--border);
+  color:var(--text-muted);
+  text-decoration:line-through;
+  text-decoration-thickness:1px;
+  cursor:default;
+}
+.chip.na:hover, .chip.na:focus-visible{
+  background:transparent;
+  border-color:var(--border);
+  color:var(--text-muted);
+}
+.na-reason{
+  margin:0.35rem 0 0;
+  font-size:0.8rem;
+  color:var(--text-muted);
+  max-width:72ch;
+}
 .chip.hidden{display:none;}
 .category.hidden{display:none;}
 
@@ -599,11 +622,12 @@ footer{
       <span class="major-count" id="gms14MajorCount">4 patched in</span>
     </summary>
 
-    <p>Functions GMS1.4 projects can call that this GM8.1-era runner never shipped, now patched in as real native code &#8212; not a loader-level workaround, actual machine code living inside the runner. Below: what's done and what's still confirmed missing (sourced against the real <a href="https://www.hitscan.org/dadiospice/" style="color:inherit">GameMaker: Studio 1.4 manual archive</a>, not guessed), <b style="color:var(--text);">side by side within each GM8.1 category</b> &#8212; the same green-means-done, plain-means-not convention as the GM8.1 section above &#8212; then separately by whole feature areas GM8.1 never had a category for at all.</p>
+    <p>Functions GMS1.4 projects can call that this GM8.1-era runner never shipped, now patched in as real native code &#8212; not a loader-level workaround, actual machine code living inside the runner. Below: what's done and what's still confirmed missing (sourced against the real <a href="https://www.hitscan.org/dadiospice/" style="color:inherit">GameMaker: Studio 1.4 manual archive</a>, not guessed), <b style="color:var(--text);">side by side within each GM8.1 category</b> &#8212; the same green-means-done, plain-means-not convention as the GM8.1 section above &#8212; then separately by whole feature areas GM8.1 never had a category for at all. A function that needs hardware or a service the PSP doesn't have is counted apart from all of that, under <b style="color:var(--text);">Not applicable for this target</b>, so the "confirmed missing" figure only ever covers work that could actually be done.</p>
 
     <div class="ledger-stats">
       <div><span class="n">4</span><span class="l">native functions patched in</span></div>
-      <div><span class="n" id="ledgerPendingCount" style="color:var(--signal-text)">&#8212;</span><span class="l">confirmed missing, not yet implemented</span></div>
+      <div><span class="n" id="ledgerPendingCount" style="color:var(--signal-text)">&#8212;</span><span class="l">confirmed missing, could be built</span></div>
+      <div><span class="n" id="ledgerNaCount" style="color:var(--text-muted)">&#8212;</span><span class="l">not applicable for this target</span></div>
       <div><span class="n">GMS1.4-only</span><span class="l">activation gate</span></div>
     </div>
 
@@ -616,8 +640,12 @@ footer{
     <div class="patched-grid" id="categoryGrid"></div>
 
     <h4 style="font-family:var(--display); font-weight:700; font-size:1.05rem; color:var(--text); margin:0.5rem 0 0;">Confirmed missing &#8212; entire feature areas GM8.1 never had</h4>
-    <p style="color:var(--text-muted); font-size:0.88rem; margin:0.3rem 0 0; max-width:70ch;">These have no GM8.1 category to sit under at all &#8212; Box2D physics, the buffer/vertex-buffer APIs, shaders, gamepad input, and the platform-integration surfaces (Steam, Facebook, achievements) all arrived after this runner's era.</p>
+    <p style="color:var(--text-muted); font-size:0.88rem; margin:0.3rem 0 0; max-width:70ch;">These have no GM8.1 category to sit under at all &#8212; Box2D physics, the buffer/vertex-buffer APIs, shaders, gamepad input and networking all arrived after this runner's era. Every one of them is genuinely buildable on a PSP, just unbuilt &#8212; unlike the group below.</p>
     <div class="patched-grid" id="pendingGridNew"></div>
+
+    <h4 style="font-family:var(--display); font-weight:700; font-size:1.05rem; color:var(--text); margin:1.5rem 0 0;">Not applicable for this target</h4>
+    <p style="color:var(--text-muted); font-size:0.88rem; margin:0.3rem 0 0; max-width:72ch;">Confirmed absent, and confirmed <b style="color:var(--text); font-weight:500;">unreachable</b> &#8212; each of these needs a service or a piece of hardware a PSP simply does not have, so they are not a backlog and are counted separately from the "confirmed missing" figure above. They stay listed rather than quietly dropped, so a GMS1.4 project that calls one gets a straight answer about why it can never work here.</p>
+    <div class="patched-grid" id="naGrid"></div>
 
     <p style="color:var(--text-muted); font-size:0.82rem; margin-top:1rem; max-width:70ch;"><b style="color:var(--text); font-weight:500;">Deliberately excluded:</b> <code style="font-family:var(--mono)">json_encode</code>/<code style="font-family:var(--mono)">json_decode</code> and the <code style="font-family:var(--mono)">gpu_set_*</code>/<code style="font-family:var(--mono)">gpu_get_*</code> blend/filter controls &#8212; neither could be confirmed present in the GMS1.4-era manual specifically (both read as later, 1.99/2.0-era additions), so they're left off rather than guessed. Also excluded: HTML5/Windows&nbsp;8/Windows&nbsp;Phone-specific functions and advertising/IAP/push-notification/cloud-save APIs, none of which are reachable on a PSP target regardless of runner support.</p>
 
@@ -819,13 +847,21 @@ const GMS14_NEW_CATEGORIES = [
   ["Shaders", ["shader_set","shader_get_uniform","shader_get_sampler_index","shader_set_uniform_f","shader_set_uniform_f_array","shader_set_uniform_i","shader_set_uniform_i_array","shader_set_uniform_matrix","shader_set_uniform_matrix_array","shader_reset","shader_is_compiled","shaders_are_supported","shader_current","shader_enable_corner_id"]],
   ["Vertex Buffers & Primitive Building", ["vertex_format_begin","vertex_format_add_colour","vertex_format_add_position","vertex_format_add_position_3d","vertex_format_add_textcoord","vertex_format_add_normal","vertex_format_add_custom","vertex_format_end","vertex_format_delete","vertex_create_buffer","vertex_create_buffer_ext","vertex_create_buffer_from_buffer","vertex_create_buffer_from_buffer_ext","vertex_get_buffer_size","vertex_get_number","vertex_delete_buffer","vertex_begin","vertex_colour","vertex_normal","vertex_position","vertex_position_3d","vertex_argb","vertex_texcoord","vertex_float1","vertex_float2","vertex_float3","vertex_float4","vertex_ubyte4","vertex_end","vertex_freeze","vertex_submit"]],
   ["Gamepad Input", ["gamepad_is_supported","gamepad_get_device_count","gamepad_is_connected","gamepad_get_description","gamepad_get_button_threshold","gamepad_set_button_threshold","gamepad_axis_count","gamepad_axis_value","gamepad_button_check","gamepad_button_check_pressed","gamepad_button_check_released","gamepad_button_count","gamepad_button_value","gamepad_set_vibration","gamepad_set_axis_deadzone","gamepad_set_colour"]],
-  ["Device Input", ["device_mouse_check_button","device_mouse_check_button_pressed","device_mouse_check_button_released","device_mouse_dbclick_enable","device_mouse_x","device_mouse_y","device_mouse_raw_x","device_mouse_raw_y","device_mouse_x_to_gui","device_mouse_y_to_gui","device_is_keypad_open","device_get_tilt_x","device_get_tilt_y","device_get_tilt_z"]],
-  ["Immersion Haptics", ["immersion_play_effect", "immersion_stop"]],
   ["Networking", ["network_create_server","network_create_server_raw","network_create_socket","network_create_socket_ext","network_connect","network_connect_raw","network_resolve","network_set_config","network_set_timeout","network_send_broadcast","network_send_packet","network_send_raw","network_send_udp","network_send_udp_raw","network_destroy"]],
   ["Operating System", ["os_browser","os_device","os_type","os_version","os_is_paused","os_is_network_connected","os_get_config","os_get_language","os_get_region","os_get_info","os_powersave_enable","os_lock_orientation"]],
-  ["Steam API", ["steam_initialised","steam_stats_ready","steam_is_overlay_enabled","steam_get_persona_name","steam_get_user_persona_name","steam_get_user_steam_id","steam_is_user_logged_on","steam_get_app_id","steam_get_user_account_id","steam_current_game_language","steam_available_languages","steam_activate_overlay","steam_activate_overlay_browser","steam_activate_overlay_store","steam_activate_overlay_user","steam_is_overlay_activated","steam_create_leaderboard","steam_upload_score","steam_upload_score_buffer","steam_download_scores","steam_download_scores_around_user","steam_download_friends_scores","steam_set_achievement","steam_get_achievement","steam_clear_achievement","steam_set_stat_int","steam_set_stat_float","steam_set_stat_avg_rate","steam_get_stat_int","steam_get_stat_float","steam_get_stat_avg_rate","steam_reset_all_stats","steam_reset_all_stats_achievements","steam_is_cloud_enabled_for_app","steam_is_cloud_enabled_for_account","steam_get_quota_total","steam_get_quota_free","steam_file_exists","steam_file_size","steam_file_persisted","steam_file_write","steam_file_write_file","steam_file_read","steam_file_share","steam_file_delete","steam_is_screenshot_requested","steam_send_screenshot","steam_publish_workshop_file","steam_user_owns_dlc","steam_user_installed_dlc"]],
-  ["Achievements & Leaderboards", ["achievement_login_status","achievement_login","achievement_logout","achievement_available","achievement_post","achievement_post_score","achievement_increment","achievement_show_achievements","achievement_show_leaderboards","achievement_show_challenge_notifications","achievement_get_challenges","achievement_get_pic","achievement_load_friends","achievement_load_leaderboard","achievement_load_progress","achievement_send_challenge","achievement_reset"]],
-  ["Facebook", ["facebook_init","facebook_login","facebook_request_publish_permissions","facebook_request_read_permissions","facebook_check_permission","facebook_status","facebook_accesstoken","facebook_user_id","facebook_graph_request","facebook_dialog","facebook_send_invite","facebook_post_message","facebook_logout"]],
+];
+// Confirmed absent, and confirmed *unreachable* - these need a service or a
+// piece of hardware the PSP does not have, so they are not a backlog. Kept
+// listed (rather than silently dropped) so a GMS1.4 project that calls one
+// gets a straight answer about why it can never work here, and counted
+// separately so the "confirmed missing" figure only covers things that
+// could actually be built.
+const GMS14_NOT_APPLICABLE = [
+  ["Device Input", ["device_mouse_check_button","device_mouse_check_button_pressed","device_mouse_check_button_released","device_mouse_dbclick_enable","device_mouse_x","device_mouse_y","device_mouse_raw_x","device_mouse_raw_y","device_mouse_x_to_gui","device_mouse_y_to_gui","device_is_keypad_open","device_get_tilt_x","device_get_tilt_y","device_get_tilt_z"], "Touchscreen and accelerometer input (device_mouse_* is touch emulation, device_get_tilt_* is an accelerometer, device_is_keypad_open is a soft keyboard). The PSP has none of this hardware."],
+  ["Immersion Haptics", ["immersion_play_effect", "immersion_stop"], "The Immersion TouchSense haptics SDK. The PSP handheld has no vibration motor at all."],
+  ["Steam API", ["steam_initialised","steam_stats_ready","steam_is_overlay_enabled","steam_get_persona_name","steam_get_user_persona_name","steam_get_user_steam_id","steam_is_user_logged_on","steam_get_app_id","steam_get_user_account_id","steam_current_game_language","steam_available_languages","steam_activate_overlay","steam_activate_overlay_browser","steam_activate_overlay_store","steam_activate_overlay_user","steam_is_overlay_activated","steam_create_leaderboard","steam_upload_score","steam_upload_score_buffer","steam_download_scores","steam_download_scores_around_user","steam_download_friends_scores","steam_set_achievement","steam_get_achievement","steam_clear_achievement","steam_set_stat_int","steam_set_stat_float","steam_set_stat_avg_rate","steam_get_stat_int","steam_get_stat_float","steam_get_stat_avg_rate","steam_reset_all_stats","steam_reset_all_stats_achievements","steam_is_cloud_enabled_for_app","steam_is_cloud_enabled_for_account","steam_get_quota_total","steam_get_quota_free","steam_file_exists","steam_file_size","steam_file_persisted","steam_file_write","steam_file_write_file","steam_file_read","steam_file_share","steam_file_delete","steam_is_screenshot_requested","steam_send_screenshot","steam_publish_workshop_file","steam_user_owns_dlc","steam_user_installed_dlc"], "Requires the Steam client and its SDK - no such service exists on PSP hardware."],
+  ["Achievements & Leaderboards", ["achievement_login_status","achievement_login","achievement_logout","achievement_available","achievement_post","achievement_post_score","achievement_increment","achievement_show_achievements","achievement_show_leaderboards","achievement_show_challenge_notifications","achievement_get_challenges","achievement_get_pic","achievement_load_friends","achievement_load_leaderboard","achievement_load_progress","achievement_send_challenge","achievement_reset"], "Platform achievement services (Game Center / Google Play Games style). The PSP has no equivalent service to talk to."],
+  ["Facebook", ["facebook_init","facebook_login","facebook_request_publish_permissions","facebook_request_read_permissions","facebook_check_permission","facebook_status","facebook_accesstoken","facebook_user_id","facebook_graph_request","facebook_dialog","facebook_send_invite","facebook_post_message","facebook_logout"], "Requires the Facebook mobile SDK and a live OAuth session - neither is reachable from a PSP."],
 ];
 
 function slugify(s){
@@ -936,6 +972,36 @@ if (categoryGrid) {
   });
 }
 
+// Not-applicable chips. Counted into their own total, never into
+// pendingFnsTotal - "confirmed missing" should only ever mean "could be built
+// and hasn't been", otherwise the number quietly implies a roadmap that
+// doesn't exist. Rendered inert (no copy-on-click) since there is nothing
+// useful to paste into a project.
+let naFnsTotal = 0;
+const naGrid = document.getElementById('naGrid');
+if (naGrid) {
+  GMS14_NOT_APPLICABLE.forEach(([catName, fns, reason]) => {
+    naFnsTotal += fns.length;
+    const h4 = document.createElement('h4');
+    h4.textContent = catName;
+    naGrid.appendChild(h4);
+    const note = document.createElement('p');
+    note.className = 'na-reason';
+    note.textContent = reason;
+    naGrid.appendChild(note);
+    const grid = document.createElement('div');
+    grid.className = 'chipgrid';
+    fns.forEach(fn => {
+      const chip = document.createElement('span');
+      chip.className = 'chip na';
+      chip.textContent = fn;
+      chip.title = reason;
+      grid.appendChild(chip);
+    });
+    naGrid.appendChild(grid);
+  });
+}
+
 // Confirmed-missing chips for entire feature areas GM8.1 has no category for.
 const pendingGridNew = document.getElementById('pendingGridNew');
 if (pendingGridNew) {
@@ -956,7 +1022,8 @@ if (pendingGridNew) {
 document.getElementById('statTotal').textContent = totalFns;
 document.getElementById('statPending').textContent = pendingFnsTotal;
 document.getElementById('ledgerPendingCount').textContent = pendingFnsTotal;
-document.getElementById('gms14MajorCount').textContent = '4 patched in · ' + pendingFnsTotal + ' confirmed missing';
+document.getElementById('ledgerNaCount').textContent = naFnsTotal;
+document.getElementById('gms14MajorCount').textContent = '4 patched in · ' + pendingFnsTotal + ' confirmed missing · ' + naFnsTotal + ' N/A';
 
 const filterInput = document.getElementById('filterInput');
 const filtercount = document.getElementById('filtercount');
