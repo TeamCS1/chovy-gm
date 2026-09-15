@@ -1,4 +1,5 @@
 <meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Runner Function Ledger</title>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@600;700;800&family=IBM+Plex+Sans:wght@400;500;600&family=Martian+Mono:wght@400;500;600&display=swap">
 <style>
@@ -534,6 +535,40 @@ main.content{min-width:0;}
 .entry li{margin-bottom:0.3rem;}
 .entry li b{color:var(--text); font-weight:500;}
 .entry .missing{color:var(--signal-text);}
+/* Every patch entry answers the same four questions in the same order, so
+   they can be read down a column and compared rather than each being its own
+   shape. Note is optional and only carries a lesson worth keeping. */
+.entry-facts{
+  display:grid;
+  /* minmax(0,1fr), not 1fr: a plain 1fr track sizes to max-content, so one
+     long unbreakable <code> path (tools/runner_patch/patch_hsv_minmax_fix.py)
+     widens the column past the viewport and scrolls the whole page sideways. */
+  grid-template-columns:5.5rem minmax(0,1fr);
+  gap:0.5rem 1.1rem;
+  margin:0.85rem 0 0;
+  font-size:0.88rem;
+  color:var(--text-muted);
+}
+.entry-facts dt{
+  font-family:var(--mono);
+  font-size:0.66rem;
+  letter-spacing:0.09em;
+  text-transform:uppercase;
+  color:var(--text-muted);
+  padding-top:0.18rem;
+}
+.entry-facts dd{margin:0; overflow-wrap:break-word;}
+.entry-facts dd b{color:var(--text); font-weight:500;}
+.entry-facts dd code{font-family:var(--mono); overflow-wrap:anywhere;}
+.entry-facts .note-row{color:var(--signal-text);}
+@media (max-width:640px){
+  /* flex:1 keeps min-width:auto by default, so the search box refuses to
+     shrink below its content and pushes the "N of N shown" label off-screen. */
+  .filterbar{flex-wrap:wrap;}
+  .filterbar input{min-width:0;}
+  .entry-facts{grid-template-columns:minmax(0,1fr); gap:0.1rem;}
+  .entry-facts dd{margin:0 0 0.6rem;}
+}
 .gate-note{
   font-size:0.83rem;
   color:var(--text-muted);
@@ -560,6 +595,10 @@ footer{
     display:flex;
     flex-wrap:nowrap;
     overflow-x:auto;
+    /* A grid item defaults to min-width:auto, so without this the nav grows to
+       fit all ~25 category links (~4500px) instead of clipping them, and the
+       whole page scrolls sideways rather than just this strip. */
+    min-width:0;
     gap:0.3rem;
     padding-bottom:0.5rem;
     border-bottom:1px solid var(--border);
@@ -654,12 +693,12 @@ footer{
         <code>draw_self()</code>
         <span class="status-pill">Implemented &middot; confirmed in PPSSPP</span>
       </div>
-      <ul>
-        <li><b>Registration mechanism</b> &#8212; native functions live in a fixed 80-byte (0x50) table at <code style="font-family:var(--mono)">DAT_00123a18</code>, appended by <code style="font-family:var(--mono)">FUN_000045bc(name, funcPtr, argCount, flag)</code>. A 4-byte hook at the entry of the draw/display registration routine (one instruction, replaced with a jump to a small trampoline) adds one more call to this table at startup &#8212; the only existing code touched anywhere in the runner.</li>
-        <li><b>The function body</b> &#8212; reads the instance's own <code style="font-family:var(--mono)">sprite_index / x / y / image_index / image_xscale / image_yscale / image_angle / image_alpha</code> via 8 getter functions the runner already had, packs them into the same argument shape <code style="font-family:var(--mono)">draw_sprite_ext</code> expects, and tail-calls straight into <code style="font-family:var(--mono)">draw_sprite_ext</code>'s own real implementation. No sprite-drawing logic was reimplemented &#8212; every call target already existed.</li>
-        <li><b>Where the new code lives</b> &#8212; appended into the runner's own pre-existing free memory (a <code style="font-family:var(--mono)">.bss</code>-style region reserving far more space than it uses), so nothing about the ELF's structure changed. Room here for many more small patches like this one.</li>
-        <li><b>Tested</b> &#8212; a GMS1.4 project's Draw event calling <code style="font-family:var(--mono)">draw_self()</code> now renders the sprite correctly in PPSSPP, with the game running indefinitely instead of the previous silent exit.</li>
-      </ul>
+      <dl class="entry-facts">
+        <dt>Why</dt><dd>Absent from this GM8.1-era runner entirely, so a GMS1.4 project calling it died in <code style="font-family:var(--mono)">PrepareGame</code> with no visible error.</dd>
+        <dt>How</dt><dd>Reads the instance's own <code style="font-family:var(--mono)">sprite_index / x / y / image_index / image_xscale / image_yscale / image_angle / image_alpha</code> through 8 getters the runner already had, packs them into the argument shape <code style="font-family:var(--mono)">draw_sprite_ext</code> expects, and tail-calls its real implementation. No sprite-drawing logic was reimplemented &#8212; every call target already existed.</dd>
+        <dt>Patch</dt><dd>~350 bytes appended into the runner's own <code style="font-family:var(--mono)">.bss</code>-style free region, reached by a single 4-byte hook on the draw/display registration routine &#8212; the only existing code touched anywhere (<code style="font-family:var(--mono)">tools/runner_patch/patch_draw_self.py</code>).</dd>
+        <dt>Tested</dt><dd>A GMS1.4 Draw event calling it renders the sprite correctly in PPSSPP, with the game running indefinitely instead of the previous silent exit.</dd>
+      </dl>
     </div>
 
     <div class="entry">
@@ -667,13 +706,13 @@ footer{
         <code>clamp() / lerp() / dot_product()</code>
         <span class="status-pill">Implemented &middot; confirmed in PPSSPP</span>
       </div>
-      <ul>
-        <li><b>Confirmed genuinely missing</b> &#8212; unlike most gaps found via the static scan, these three strings don't exist anywhere in the binary at all, not just unregistered.</li>
-        <li><b>clamp(value, min, max)</b> needs no new arithmetic: GM8.1 already has real, registered <code style="font-family:var(--mono)">min()</code>/<code style="font-family:var(--mono)">max()</code> functions, so it's implemented as <code style="font-family:var(--mono)">min(max(value, min), max)</code> &#8212; copy the arguments into scratch space and delegate, same philosophy as <code style="font-family:var(--mono)">draw_self()</code>.</li>
-        <li><b>lerp(a, b, amt)</b> and <b>dot_product(x1, y1, x2, y2)</b> are genuine new arithmetic, using a newly-confirmed mechanism: unbox each argument to a hardware single-precision float, compute with plain FPU instructions, rebox the result.</li>
-        <li class="missing"><b>Two real bugs found and fixed along the way</b> &#8212; an early version hooked the registration routine's entry (mirroring <code style="font-family:var(--mono)">draw_self()</code>'s approach exactly) and silently corrupted every <em>other</em> function that routine registers, including <code style="font-family:var(--mono)">string()</code>; the fix hooks its exit instead. A second, separate bug registered all three functions with the wrong argument count (copy-pasted from <code style="font-family:var(--mono)">draw_self()</code>, which correctly takes zero) &#8212; both produced the identical silent-exit symptom, isolated by testing with zero calls first, then one function at a time.</li>
-        <li><b>Tested</b> &#8212; a 7-case battery (three <code style="font-family:var(--mono)">clamp()</code>, two <code style="font-family:var(--mono)">lerp()</code>, two <code style="font-family:var(--mono)">dot_product()</code>) passed 7/7 live in PPSSPP.</li>
-      </ul>
+      <dl class="entry-facts">
+        <dt>Why</dt><dd>Confirmed genuinely missing &#8212; unlike most gaps found by the static scan, these three strings don't exist anywhere in the binary at all, not merely unregistered.</dd>
+        <dt>How</dt><dd><code style="font-family:var(--mono)">clamp()</code> needs no new arithmetic: <code style="font-family:var(--mono)">min()</code>/<code style="font-family:var(--mono)">max()</code> are already real registered functions, so it is <code style="font-family:var(--mono)">min(max(value, min), max)</code> by delegation. <code style="font-family:var(--mono)">lerp()</code> and <code style="font-family:var(--mono)">dot_product()</code> are genuine new arithmetic &#8212; unbox each argument to a hardware single-precision float, compute with plain FPU instructions, rebox the result.</dd>
+        <dt>Patch</dt><dd>Appended after <code style="font-family:var(--mono)">draw_self()</code>'s block in the same free region, registered from a hook on the math/string registration routine's <b>exit</b> (<code style="font-family:var(--mono)">tools/runner_patch/patch_math_functions.py</code>).</dd>
+        <dt>Tested</dt><dd><b>7/7</b> live in PPSSPP &#8212; three <code style="font-family:var(--mono)">clamp()</code> cases, two <code style="font-family:var(--mono)">lerp()</code>, two <code style="font-family:var(--mono)">dot_product()</code>.</dd>
+        <dt class="note-row">Note</dt><dd class="note-row">Hooking that routine's <em>entry</em> instead silently corrupted every other function it registers, <code style="font-family:var(--mono)">string()</code> included; separately, all three were first registered with an argument count copied from <code style="font-family:var(--mono)">draw_self()</code>, which correctly takes zero. Both produced an identical silent exit, isolated by testing with no calls first, then one function at a time.</dd>
+      </dl>
     </div>
 
     <div class="entry">
@@ -681,12 +720,12 @@ footer{
         <code>draw_set_color() / draw_get_color() &#8212; Red/Blue swap</code>
         <span class="status-pill">Fixed &middot; confirmed in PPSSPP</span>
       </div>
-      <ul>
-        <li><b>Not a missing function &#8212; a bugfix to two existing ones.</b> Found while live-testing the full "Drawing: Color & Blending" category: rendering consistently swapped Red and Blue (a pure "red" drew as blue and vice versa), confirmed with three independent visual checks (a red-then-alpha-blue blend, an HSV hue sweep, and a <code style="font-family:var(--mono)">draw_getpixel</code> target rectangle all showed red/blue reversed, green untouched). Matches a real, documented cross-version GameMaker bug (<code style="font-family:var(--mono)">github.com/YoYoGames/GameMaker-Bugs</code> issue #7070).</li>
-        <li><b>Root cause</b> &#8212; <code style="font-family:var(--mono)">make_color_rgb</code> already packs colors in the exact byte order the PSP's GPU wants (confirmed via its own decompile); the function that combines that packed color with the current alpha for the GPU explicitly (and wrongly) swapped the Red and Blue bytes before combining, undoing byte ordering that never needed touching &#8212; most likely a porting mistake assuming a PC-style byte layout. <code style="font-family:var(--mono)">draw_get_color()</code>'s own read-back path did the exact mirror-image swap, which had been silently canceling out the render bug for round-trip checks the whole time; fixing only the render side broke it, so both got the same fix.</li>
-        <li><b>Pure instruction-level patch</b> &#8212; the corrected logic needs fewer instructions than the bug it replaces, so both fixes fit inside the original functions' own bounds with no free-memory allocation or hook redirection (<code style="font-family:var(--mono)">tools/runner_patch/patch_color_swap_fix.py</code>, <code style="font-family:var(--mono)">patch_get_color_fix.py</code>).</li>
-        <li><b>Tested</b> &#8212; the full color battery re-run after patching: blend swatch, HSV sweep, and the <code style="font-family:var(--mono)">draw_getpixel</code> target all render with correct colors, and the <code style="font-family:var(--mono)">draw_set_color()</code>/<code style="font-family:var(--mono)">draw_get_color()</code> round-trip checks (never broken until this exact investigation touched them) pass again.</li>
-      </ul>
+      <dl class="entry-facts">
+        <dt>Why</dt><dd>Not a missing function &#8212; a bug in two existing ones. Rendering consistently swapped red and blue (a pure red drew as blue, green untouched), confirmed by three independent visual checks: a red-then-alpha-blue blend, a hue sweep, and a target rectangle. Matches a documented cross-version GameMaker bug (<code style="font-family:var(--mono)">YoYoGames/GameMaker-Bugs</code> #7070).</dd>
+        <dt>How</dt><dd><code style="font-family:var(--mono)">make_color_rgb</code> already packs colours in the exact byte order the PSP's GPU wants; the function combining that colour with the current alpha swapped the red and blue bytes anyway, undoing ordering that never needed touching &#8212; most likely a porting assumption about PC byte layout. <code style="font-family:var(--mono)">draw_get_color()</code>'s read-back path did the exact mirror swap, which had been cancelling the bug out in round-trip checks and hiding it.</dd>
+        <dt>Patch</dt><dd>Pure in-place instruction edits &#8212; the corrected logic is shorter than the bug it replaces, so both fit inside the original functions' own bounds with no free-memory allocation or hook redirection (<code style="font-family:var(--mono)">tools/runner_patch/patch_color_swap_fix.py</code>, <code style="font-family:var(--mono)">patch_get_color_fix.py</code>).</dd>
+        <dt>Tested</dt><dd>Full colour battery re-run after patching: blend swatch, hue sweep and target rectangle all render correctly, and the round-trip checks &#8212; which only broke once the render side was fixed alone &#8212; pass again.</dd>
+      </dl>
     </div>
 
     <div class="entry">
@@ -694,14 +733,13 @@ footer{
         <code>color_get_hue() / color_get_saturation() / color_get_value()</code>
         <span class="status-pill">Fixed &middot; confirmed in PPSSPP</span>
       </div>
-      <ul>
-        <li><b>All three were broken, and for the same reason.</b> They share one RGB-to-HSV routine (<code style="font-family:var(--mono)">FUN_000bf1e8</code>), which returned a flat <code style="font-family:var(--mono)">0</code> for hue, saturation <em>and</em> value on any input &#8212; originally mistaken for a saturation-only fault because pure red's minimum channel happens to be <code style="font-family:var(--mono)">0</code> too.</li>
-        <li><b>Root cause 1 &#8212; it computed the minimum twice and the maximum never.</b> The routine holds two consecutive, textually <em>identical</em> three-way comparison blocks. The first correctly finds <code style="font-family:var(--mono)">min(R,G,B)</code>; the second is the same code again, but everything downstream treats its result as the <em>maximum</em> (<code style="font-family:var(--mono)">delta = max - min</code>, <code style="font-family:var(--mono)">saturation = delta / max</code>, <code style="font-family:var(--mono)">value = max &times; 255</code>). With both computing the minimum, <code style="font-family:var(--mono)">delta</code> is always exactly zero, collapsing hue and saturation to <code style="font-family:var(--mono)">0</code> and making value report the darkest channel instead of the brightest. Fixed by swapping the operands of that block's three float comparisons, turning each min-select into a max-select.</li>
-        <li><b>Root cause 2 &#8212; saturation was scaled by 2550 instead of 255.</b> The result is written with a <em>byte</em> store, so full saturation wrapped to <code style="font-family:var(--mono)">2550 &amp; 0xFF = 246</code> and mid-range values wrapped to nonsense. Hue and value used the correct scales; only saturation carried the stray factor of ten. Fixed by correcting the constant.</li>
-        <li><b>Five words changed, nothing moved</b> &#8212; both fixes are in-place word edits with identical instruction counts, so no free memory or hook redirection was needed (<code style="font-family:var(--mono)">tools/runner_patch/patch_hsv_minmax_fix.py</code>). An earlier conservative workaround that only redirected which value got returned is reverted by the same script.</li>
-        <li class="missing"><b>Static analysis was wrong three times here; live debugging settled it.</b> The decompiler attributed the HSV math to the wrong function entirely (raw disassembly showed a 14-instruction byte-repacker), one patch attempt crashed the runner outright, and another regressed a passing test by "fixing" a Red/Blue byte swap that was deliberate and correct all along. What finally identified the bug was a live PPSSPP breakpoint proving a <em>well-formed</em> input still produced <code style="font-family:var(--mono)">0</code> &#8212; see CLAUDE.md for the full trail.</li>
-        <li><b>Tested</b> &#8212; a 15-colour round-trip battery (<code style="font-family:var(--mono)">make_color_hsv</code> &rarr; all three getters, &plusmn;4 tolerance for 8-bit quantisation) passed <b>45/45</b> live in PPSSPP: all six hue sectors, two mid-sector hues, dark / half-saturated / muted variants, plus the two degenerate cases (a desaturated grey and a zero-value black, both correctly reporting hue and saturation as <code style="font-family:var(--mono)">0</code>).</li>
-      </ul>
+      <dl class="entry-facts">
+        <dt>Why</dt><dd>All three returned a flat <code style="font-family:var(--mono)">0</code> for any input. Read at first as a saturation-only fault, because pure red's minimum channel is <code style="font-family:var(--mono)">0</code> too.</dd>
+        <dt>How</dt><dd>Two independent bugs in the one shared RGB-to-HSV routine. <b>One:</b> it computed <code style="font-family:var(--mono)">min(R,G,B)</code> twice and the maximum never &#8212; two textually identical comparison blocks &#8212; so <code style="font-family:var(--mono)">delta</code> was always exactly zero, collapsing hue and saturation to <code style="font-family:var(--mono)">0</code> and making value report the darkest channel instead of the brightest. <b>Two:</b> saturation was scaled by <code style="font-family:var(--mono)">2550</code> instead of <code style="font-family:var(--mono)">255</code>, then truncated by a byte store, wrapping full saturation to <code style="font-family:var(--mono)">246</code>.</dd>
+        <dt>Patch</dt><dd>Five in-place word edits with identical instruction counts &#8212; no free memory, no hook redirection (<code style="font-family:var(--mono)">tools/runner_patch/patch_hsv_minmax_fix.py</code>). The same script reverts an earlier workaround that only redirected which intermediate value got returned.</dd>
+        <dt>Tested</dt><dd><b>45/45</b> live in PPSSPP &#8212; a 15-colour round-trip through <code style="font-family:var(--mono)">make_color_hsv</code> and back out through all three getters (&#177;4 for 8-bit quantisation): every hue sector, two mid-sector hues, dark / half-saturated / muted variants, plus a desaturated grey and a zero-value black, both correctly reporting hue and saturation as <code style="font-family:var(--mono)">0</code>.</dd>
+        <dt class="note-row">Note</dt><dd class="note-row">Static analysis was wrong three times here. The decompiler attributed the HSV maths to the wrong function entirely (raw disassembly showed a 14-instruction byte-repacker), one patch attempt crashed the runner outright, and another regressed a passing test by "fixing" a Red/Blue byte swap that was deliberate and correct. A live PPSSPP breakpoint proving a well-formed input still returned <code style="font-family:var(--mono)">0</code> is what finally settled it &#8212; full trail in CLAUDE.md.</dd>
+      </dl>
     </div>
 
     <div class="gate-note">
